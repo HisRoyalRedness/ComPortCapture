@@ -23,10 +23,15 @@ namespace HisRoyalRedness.com
                         config.LogPath,
                         new Func<string, string>(path => Path.Combine(path, $"{config.COMPort} {DateTime.Now:yyyyMMddHHmmss}.log")));
                 _logWriter.MaxLogFileSize = (int)config.LogFileSize;
+                _logWriter.AutoFlush = true;
             }
         }
 
-        public void RollLog() => _logWriter?.RollLogFile();
+        public void RollLog()
+        {
+            _logWriter?.RollLogFile();
+            WriteLine("Log file rolled over by user", true);
+        }
 
         public string Header
         {
@@ -44,10 +49,16 @@ namespace HisRoyalRedness.com
             InternalWrite(msg + Environment.NewLine);
         }
 
-        public void WriteLine(string msg) => Write(msg + Environment.NewLine);
+        public void WriteLine(string msg, bool startOnNewLine = false) => Write(msg + Environment.NewLine, startOnNewLine);
+        public void WriteWarning(string msg) => Write($"WARNING: {msg}{Environment.NewLine}", true);
+        public void WriteError(string msg) => Write($"ERROR: {msg}{Environment.NewLine}", true);
 
-        public void Write(string msg)
+        public void Write(string msg, bool startOnNewLine = false)
         {
+            if (startOnNewLine && _state != WriteState.StartOfLine)
+                foreach (var c in Environment.NewLine)
+                    Write(c);
+
             foreach (var c in msg)
                 Write(c);
         }

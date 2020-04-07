@@ -166,7 +166,7 @@ namespace HisRoyalRedness.com
                             if (bytesRead <= 0)
                             {
                                 --retries;
-                                config.Logger.WriteLine($"WARNING: Cannot read from port {config.COMPort}. Retrying...");
+                                config.Logger.WriteWarning($"Cannot read from port {config.COMPort}. Retrying...");
                                 serial.Close();
                                 await Task.Delay(5000, token);
 
@@ -178,7 +178,7 @@ namespace HisRoyalRedness.com
                                 {
                                     if (retries <= 0)
                                     {
-                                        config.Logger.WriteLine($"ERROR: Cannot open {config.COMPort}. {ex.Message}");
+                                        config.Logger.WriteError($"Cannot open {config.COMPort}. {ex.Message}");
                                         run = false;
                                     }
                                 }
@@ -355,173 +355,4 @@ namespace HisRoyalRedness.com
         static Regex _configRegex = new Regex(@"^([5-8])\s*,\s*(0|1|1.5|2)\s*,\s*([noems])\s*,\s*([nrxb])$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         #endregion Command line parsing
     }
-
-    #region RollingLogFile
-    //public class RollingLogFile : TextWriter
-    //{
-    //    enum WriteState
-    //    {
-    //        StartOfLine,
-    //        MiddleOfLine,
-    //        EndOfLine
-    //    }
-
-    //    public RollingLogFile()
-    //        : this(() => DateTime.Now.ToString("yyyyMMddHHmmssfff") + ".log")
-    //    { }
-
-    //    public RollingLogFile(Func<string> logNameGenerator)
-    //    {
-    //        MaxLogSize = Configuration.DEFAULT_FILE_SIZE;
-    //        LogNameGenerator = logNameGenerator;
-    //    }
-
-    //    public override Encoding Encoding
-    //    { get { return _encoding; } }
-
-    //    public override void Write(char value)
-    //    {
-    //        if (_writer == null)
-    //            CreateNew();
-
-    //        var hasChar = true;
-    //        while (hasChar)
-    //        {
-    //            switch (_state)
-    //            {
-    //                case WriteState.StartOfLine:
-    //                    var msg = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff: ");
-    //                    InternalWrite(msg);
-    //                    _logFileSize += (long)msg.Length;
-    //                    _state = WriteState.MiddleOfLine;
-    //                    break;
-
-    //                case WriteState.MiddleOfLine:
-
-    //                    switch(value)
-    //                    {
-    //                        case '\r':
-    //                            if (_cr)
-    //                                _state = WriteState.EndOfLine;
-    //                            _cr = true;
-    //                            hasChar = false; // Consume the current char
-    //                            break;
-
-    //                        case '\n':
-    //                            _cr = false;
-    //                            _state = WriteState.EndOfLine;
-    //                            hasChar = false; // Consume the current char
-    //                            break;
-
-    //                        default:
-    //                            if (_cr)
-    //                            {
-    //                                _state = WriteState.EndOfLine;
-    //                                _cr = false;
-    //                            }
-    //                            else
-    //                            {
-    //                                InternalWrite(value);
-    //                                _writer.Flush();
-    //                                ++_logFileSize;
-    //                                hasChar = false; // Consume the current char
-    //                            }
-    //                            break;
-    //                    }
-    //                    break;
-
-    //                case WriteState.EndOfLine:
-    //                    InternalWriteLine();
-    //                    _state = WriteState.StartOfLine;
-    //                    _logFileSize += (long)(Environment.NewLine.Length);
-
-    //                    // Past the upper limit? Create a new file...
-    //                    if (_logFileSize > MaxLogSize)
-    //                    {
-    //                        CloseCurrent();
-    //                        CreateNew();
-    //                        if (EchoToConsole)
-    //                            Console.Write("*** New file: {0}", CurrentLogFileName);
-    //                    }
-    //                    break;
-    //            }
-    //        }
-    //    }
-
-    //    void InternalWriteLine()
-    //    {
-    //        _writer.WriteLine();
-    //        if (EchoToConsole)
-    //            Console.WriteLine();
-    //    }
-
-    //    void InternalWriteLine(string value)
-    //    {
-    //        _writer.WriteLine(value);
-    //        if (EchoToConsole)
-    //            Console.WriteLine(value);
-    //    }
-
-    //    void InternalWrite(string value)
-    //    {
-    //        _writer.Write(value);
-    //        if (EchoToConsole)
-    //            Console.Write(value);
-    //    }
-
-    //    void InternalWrite(char value)
-    //    {
-    //        _writer.Write(value);
-    //        if (EchoToConsole)
-    //            Console.Write(value);
-    //    }
-
-
-    //    public Func<string> LogNameGenerator
-    //    { get; set; }
-
-    //    public string CurrentLogFileName
-    //    { get; private set; }
-
-    //    public long MaxLogSize
-    //    { get; set; }
-
-    //    public bool EchoToConsole
-    //    { get; set; }
-
-    //    void CloseCurrent()
-    //    {
-    //        if (_writer != null)
-    //        {
-    //            _writer.Dispose();
-    //            _writer = null;
-    //        }
-
-    //        CurrentLogFileName = null;
-    //        _logFileSize = 0;
-    //    }
-
-    //    void CreateNew()
-    //    {
-    //        CloseCurrent();
-
-    //        var logFileName = LogNameGenerator();
-    //        _writer = new StreamWriter(logFileName);
-    //        CurrentLogFileName = logFileName;
-    //    }
-
-    //    protected override void Dispose(bool disposing)
-    //    {
-    //        if (disposing)
-    //            CloseCurrent();
-    //        base.Dispose(disposing);
-    //    }
-
-    //    bool _cr = false;
-    //    long _logFileSize = 0;
-    //    StreamWriter _writer = null;
-    //    static readonly Encoding _encoding = Encoding.UTF8;
-    //    WriteState _state = WriteState.StartOfLine;
-    //}
-    #endregion RollingLogFile
 }
