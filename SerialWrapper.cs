@@ -44,7 +44,7 @@ namespace HisRoyalRedness.com
             }
         }
 
-        public int Read(char[] buffer, int offset, int bufferLen)
+        public int Read(byte[] buffer, int offset, int bufferLen)
         {
             if (_port == null || !_port.IsOpen)
                 return -1;

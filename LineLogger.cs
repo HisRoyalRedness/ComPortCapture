@@ -7,30 +7,28 @@ namespace HisRoyalRedness.com
 {
     public sealed class LineLogger : IDisposable
     {
-        enum WriteState
-        {
-            StartOfLine,
-            MiddleOfLine,
-            EndOfLine
-        }
-
         public LineLogger(Configuration config)
         {
-            if (config.IsLogging)
+            _config = config;
+            if (_config.IsLogging)
             {
                 _logWriter =
                     new RollableLogWriter(
-                        config.LogPath,
-                        new Func<string, string>(path => Path.Combine(path, $"{config.COMPort} {DateTime.Now:yyyyMMddHHmmss}.log")));
-                _logWriter.MaxLogFileSize = (int)config.LogFileSize;
+                        _config.LogPath,
+                        new Func<string, string>(path => Path.Combine(path, $"{_config.COMPort} {DateTime.Now:yyyyMMddHHmmss}.log")));
+                _logWriter.MaxLogFileSize = (int)_config.LogFileSize;
                 _logWriter.AutoFlush = true;
             }
+
+            _outputLogger = _config.IsHexMode
+                ? (IOutputLogger)new HexOutput(_config)
+                : new TextLineOutput(_config);
         }
 
         public void RollLog()
         {
             _logWriter?.RollLogFile();
-            WriteLine("Log file rolled over by user", true);
+            Console.WriteLine($"{Environment.NewLine}Log file rolled over by user");
         }
 
         public string Header
@@ -43,95 +41,38 @@ namespace HisRoyalRedness.com
             }
         }
 
-        #region Write
-        public void WriteLineRaw(string msg)
+        public void Write(byte[] buffer, int offset, int length)
         {
-            InternalWrite(msg + Environment.NewLine);
-        }
-
-        public void WriteLine(string msg, bool startOnNewLine = false) => Write(msg + Environment.NewLine, startOnNewLine);
-        public void WriteWarning(string msg) => Write($"WARNING: {msg}{Environment.NewLine}", true);
-        public void WriteError(string msg) => Write($"ERROR: {msg}{Environment.NewLine}", true);
-
-        public void Write(string msg, bool startOnNewLine = false)
-        {
-            if (startOnNewLine && _state != WriteState.StartOfLine)
-                foreach (var c in Environment.NewLine)
-                    Write(c);
-
-            foreach (var c in msg)
-                Write(c);
-        }
-
-        public void Write(char[] buffer, int offset, int length)
-        {
-            for (var i = 0; i < length; ++i)
-                Write(buffer[i + offset]);
-        }
-
-        public void Write(char value)
-        {
-            var hasChar = true;
-            while (hasChar)
+            var msg = _outputLogger.Write(buffer, offset, length);
+            if (msg?.Length > 0)
             {
-                switch (_state)
-                {
-                    case WriteState.StartOfLine:
-                        var msg = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff: ");
-                        InternalWrite(msg);
-                        _state = WriteState.MiddleOfLine;
-                        break;
-
-                    case WriteState.MiddleOfLine:
-
-                        switch (value)
-                        {
-                            case '\r':
-                                if (_cr)
-                                    _state = WriteState.EndOfLine;
-                                _cr = true;
-                                hasChar = false; // Consume the current char
-                                break;
-
-                            case '\n':
-                                _cr = false;
-                                _state = WriteState.EndOfLine;
-                                hasChar = false; // Consume the current char
-                                break;
-
-                            default:
-                                if (_cr)
-                                {
-                                    _state = WriteState.EndOfLine;
-                                    _cr = false;
-                                }
-                                else
-                                {
-                                    InternalWrite(value.ToString());
-                                    hasChar = false; // Consume the current char
-                                }
-                                break;
-                        }
-                        break;
-
-                    case WriteState.EndOfLine:
-                        InternalWrite(Environment.NewLine);
-                        _state = WriteState.StartOfLine;
-                        break;
-                }
+                _logWriter?.Write(msg);
+                Console.Write(msg);
             }
         }
 
-        void InternalWrite(string msg)
-        {
-            _logWriter?.Write(msg);
-            Console.Write(msg);
-        }
-        #endregion Write
-
         public void Dispose()
         {
-            InternalWrite(Environment.NewLine);
+            try
+            {
+                var msg = _outputLogger?.Complete();
+                if (msg?.Length > 0)
+                {
+                    _logWriter?.Write(msg);
+                    Console.Write(msg);
+                }
+            }
+            catch (Exception)
+
+            { }
+
+            try
+            {
+                _logWriter?.WriteLine();
+            }
+            catch (Exception)
+            { }
+
             try
             {
                 _logWriter?.Dispose();
@@ -141,8 +82,14 @@ namespace HisRoyalRedness.com
             _logWriter = null;
         }
 
+        readonly Configuration _config;
         RollableLogWriter _logWriter;
-        WriteState _state = WriteState.StartOfLine;
-        bool _cr = false;
+        readonly IOutputLogger _outputLogger;
+    }
+
+    public interface IOutputLogger
+    {
+        string Write(byte[] buffer, int offset, int length);
+        string Complete();
     }
 }

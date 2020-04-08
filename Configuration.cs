@@ -13,6 +13,7 @@ namespace HisRoyalRedness.com
         public const Parity DEFAULT_PARITY = Parity.None;
         public const Handshake DEFAULT_FLOW_CONTROL = Handshake.None;
         public const long DEFAULT_FILE_SIZE = 1024 * 1024 * 10; // 10MB
+        public const int DEFAULT_HEXCOLS = 16;
 
         public string COMPort { get; set; }
 
@@ -30,7 +31,19 @@ namespace HisRoyalRedness.com
 
         public string LogPath { get; set; }
 
+        public string BinLogPath { get; set; }
+
         public bool IsLogging { get; set; }
+
+        public bool IsBinaryLogging { get; set; }
+
+        public bool IgnoreEmptyLines { get; set; }
+
+        public bool IsHexMode { get; set; }
+
+        public int HexColumns { get; set; } = DEFAULT_HEXCOLS;
+
+        public Encoding InputEncoding { get; set; } = null;
 
         public LineLogger Logger { get; set; }
     }
