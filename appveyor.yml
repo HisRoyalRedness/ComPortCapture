@@ -3,21 +3,17 @@ branches:
   only:
   - master
 image: Visual Studio 2019
-assembly_info:
-  patch: true
-  file: '**\AssemblyInfo.*'
-  assembly_version: '{version}'
-  assembly_file_version: '{version}'
-  assembly_informational_version: '{version}'
 install:
 - cmd: git submodule update --init --recursive
 before_build:
 - cmd: nuget restore
-build:
-  project: ComPortCapture.csproj
-  verbosity: minimal
-after_build:
-- cmd: dotnet publish -p:PublishProfile=Win10Appveyor.pubxml --output %appveyor_build_folder%
+build_script:
+- cmd: >-
+    nuget restore
+
+    dotnet build -p:AssemblyVersion={version} -c:Release
+
+    dotnet publish -p:PublishProfile=Win10Appveyor.pubxml -p:AssemblyVersion=1.2.3.4 -c:Release --output %appveyor_build_folder%\dist
 artifacts:
 - path: ComPortCapture.exe
   name: WinExe
