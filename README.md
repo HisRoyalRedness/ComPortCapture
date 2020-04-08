@@ -1,5 +1,5 @@
 # ComPortCapture
-Capture output from a COM port, with each line timestamped
+Capture output from a COM port, with each line timestamped.
 It also supports output as hex
 
 # Usage
