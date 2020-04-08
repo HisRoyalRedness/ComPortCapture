@@ -8,7 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\Common\C#\RollableLogWriter.cs" Link="RollableLogWriter.cs" />
+    <Compile Remove="Common\**" />
+    <EmbeddedResource Remove="Common\**" />
+    <None Remove="Common\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Common\C#\RollableLogWriter.cs" />
   </ItemGroup>
 
   <ItemGroup>
