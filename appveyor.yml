@@ -17,7 +17,7 @@ build:
   project: ComPortCapture.csproj
   verbosity: minimal
 after_build:
-- cmd: dotnet publish -p:PublishProfile=Win10Appveyor.pubxml --output %appveyor_build_folder%\dist
+- cmd: dotnet publish -p:PublishProfile=Win10Appveyor.pubxml --output %appveyor_build_folder%
 artifacts:
 - path: ComPortCapture.exe
   name: WinExe
