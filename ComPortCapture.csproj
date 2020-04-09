@@ -5,7 +5,15 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <AssemblyName>ComPortCapture</AssemblyName>
     <RootNamespace>HisRoyalRedness.com</RootNamespace>
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
+
+  <ItemGroup>
+    <TrimmerRootAssembly Include="System.Collections" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Common\**" />

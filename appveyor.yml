@@ -9,11 +9,7 @@ before_build:
 - cmd: nuget restore
 build_script:
 - cmd: >-
-    nuget restore
-
-    dotnet build -p:AssemblyVersion=%APPVEYOR_BUILD_VERSION% -c:Release
-
-    dotnet publish -p:PublishProfile=Win10Appveyor.pubxml -p:AssemblyVersion=%APPVEYOR_BUILD_VERSION% --output %APPVEYOR_BUILD_FOLDER%
+    dotnet publish -r win-x64 -c Release -p:AssemblyVersion=%APPVEYOR_BUILD_VERSION% --force --output %APPVEYOR_BUILD_FOLDER%
 artifacts:
 - path: ComPortCapture.exe
   name: WinExe
