@@ -28,3 +28,9 @@ For example,
 
 ```ComPortCapture com3 baud=11520 noempty logpath=Logs```
 
+[![Build Status][BS img]][Build Status]
+
+[Latest binary](https://ci.appveyor.com/api/projects/KeithFletcher/comportcapture/artifacts/ComPortCapture.exe)
+
+[Build Status]: https://ci.appveyor.com/project/KeithFletcher/comportcapture
+[BS img]: https://ci.appveyor.com/api/projects/status/vvtdknw55lih8l8w?svg=true
