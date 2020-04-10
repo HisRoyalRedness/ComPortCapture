@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace HisRoyalRedness.com
@@ -12,11 +11,15 @@ namespace HisRoyalRedness.com
             _maxCol = _config.HexColumns - 1;
         }
 
-        public string Write(byte[] buffer, int offset, int length)
+        public string Write(ReadOnlyMemory<byte> buffer)
         {
+            if (buffer.Length == 0)
+                return string.Empty;
+
             var sb = new StringBuilder();
-            for (int i = 0; i < length; ++i)
-                WriteByte(buffer[offset + i], sb);
+            var span = buffer.Span;
+            for (int i = 0; i < span.Length; ++i)
+                WriteByte(span[i], sb);
             return sb.ToString();
         }
 
@@ -52,7 +55,7 @@ namespace HisRoyalRedness.com
         public string Complete()
         {
             if (_isStartOfLine)
-                return "";
+                return string.Empty;
 
             var sb = new StringBuilder();
             while (_currentCol < _maxCol)

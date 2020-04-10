@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace HisRoyalRedness.com
@@ -11,13 +10,13 @@ namespace HisRoyalRedness.com
             _config = config;
         }
 
-        public string Write(byte[] buffer, int offset, int length)
+        public string Write(ReadOnlyMemory<byte> buffer)
         {
-            if (length == 0)
-                return "";
+            if (buffer.Length == 0)
+                return string.Empty;
 
             var sb = new StringBuilder();
-            foreach (var c in Encoding.UTF8.GetString(buffer, offset, length))
+            foreach (var c in Encoding.UTF8.GetString(buffer.Span))
                 Write(c, sb);
             return sb.ToString();
         }
@@ -81,7 +80,7 @@ namespace HisRoyalRedness.com
             }
         }
 
-        public string Complete() => "";
+        public string Complete() => string.Empty;
 
         enum WriteState
         {

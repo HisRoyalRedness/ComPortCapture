@@ -5,15 +5,18 @@ using System.IO;
 using System.IO.Ports;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace HisRoyalRedness.com
 {
+    using DataBuffer = BufferBlock<ReadOnlyMemory<byte>>;
+
     class Program
     {
+
         enum ParseState
         {
             NewFile,
@@ -53,120 +56,25 @@ namespace HisRoyalRedness.com
                         config.Logger.Header = header;
                     Console.WriteLine(header);
 
+                    var dataQueue = new DataBuffer(); 
                     var cancelSource = new CancellationTokenSource();
-                    Task.WhenAny(
-                        KeyTask(config, cancelSource),
-                        new Program().Run(config, cancelSource.Token)
-                    ).Wait();
+
+                    var taskList = new List<Tuple<string, Task>>()
+                    {
+                        new Tuple<string, Task>( "Key handling", KeyHandlingAsync(config, cancelSource)),
+                        new Tuple<string, Task>( "Serial read", SerialReadAsync(config, dataQueue, cancelSource.Token) ),
+                        new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
+                    };
+
+                    var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
+                    Console.WriteLine($"Exit: {taskList[index].Item1}");
                 }
             }
             else
                 Environment.ExitCode = 1;
         }
 
-        static Task KeyTask(Configuration config, CancellationTokenSource cancelSource)
-            => Task.Run(() =>
-            {
-                Console.WriteLine("Hit 'Q' to quit");
-                if (config.IsLogging)
-                    Console.WriteLine("Hit 'Space' to start logging to a new log file");
-                Console.WriteLine();
-
-                while (!cancelSource.IsCancellationRequested)
-                {
-                    var keyInfo = Console.ReadKey(true);
-                    switch (keyInfo.Key)
-                    {
-                        case ConsoleKey.Q:
-                            cancelSource.Cancel();
-                            break;
-                        case ConsoleKey.C:
-                            if (keyInfo.Modifiers == ConsoleModifiers.Control)
-                                cancelSource.Cancel();
-                            break;
-                        case ConsoleKey.Spacebar:
-                            if (config.IsLogging)
-                                config.Logger.RollLog();
-                            break;
-                    }
-                }
-            });
-
-        async Task Run(Configuration config, CancellationToken token)
-        {
-            await Task.Run(async () =>
-            {
-                try
-                {
-                    using (var serial = new SerialWrapper(config))
-                    using (var binLog = config.IsBinaryLogging ? File.Open(config.BinLogPath, FileMode.Create, FileAccess.Write, FileShare.Read) : null)
-                    {
-                        // Try open the port. Only one try is necessary
-                        try
-                        {
-                            serial.Open();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine("ERROR: Cannot open {0}. {1}", config.COMPort, ex.Message);
-                            return;
-                        }
-
-                        var buffer = new byte[1024];
-                        var run = true;
-
-                        while (run)
-                        {
-                            var retries = 10;
-                            var bytesRead = 0;
-
-                            do
-                            {
-                                bytesRead = serial.Read(buffer, 0, buffer.Length);
-                                if (bytesRead <= 0)
-                                {
-                                    --retries;
-                                    Console.WriteLine($"{Environment.NewLine}WARNING: Cannot read from port {config.COMPort}. Retrying...");
-                                    serial.Close();
-                                    await Task.Delay(5000, token);
-
-                                    try
-                                    {
-                                        serial.Open();
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        if (retries <= 0)
-                                        {
-                                            Console.WriteLine($"{Environment.NewLine}ERROR: Cannot open {config.COMPort}. {ex.Message}");
-                                            run = false;
-                                        }
-                                    }
-                                }
-
-                            } while (retries > 0 && bytesRead <= 0);
-
-                            if (bytesRead > 0)
-                            {
-                                config.Logger.Write(buffer, 0, bytesRead);
-                                if (config.IsBinaryLogging)
-                                {
-                                    binLog.Write(buffer, 0, bytesRead);
-                                    binLog.Flush();
-                                }
-                            }
-                        }
-                    }
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
-                }
-            }, token);
-        }
-
         #region Command line parsing
-
         static bool ParseCommandLine(string[] args, out Configuration config)
         {
             config = new Configuration();
@@ -377,5 +285,115 @@ namespace HisRoyalRedness.com
         static Regex _comPortRegex = new Regex(@"^COM\d+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         static Regex _configRegex = new Regex(@"^([5-8])\s*,\s*(0|1|1.5|2)\s*,\s*([noems])\s*,\s*([nrxb])$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         #endregion Command line parsing
+
+        #region Key handling
+        static Task KeyHandlingAsync(Configuration config, CancellationTokenSource cancelSource)
+            => Task.Run(() =>
+            {
+                Console.WriteLine("Hit 'Q', Esc or Ctrl-C to quit");
+                if (config.IsLogging)
+                    Console.WriteLine("Hit 'Space' to start logging to a new log file");
+                Console.WriteLine();
+
+                while (!cancelSource.IsCancellationRequested)
+                {
+                    var keyInfo = Console.ReadKey(true);
+                    switch (keyInfo.Key)
+                    {
+                        case ConsoleKey.Q:
+                        case ConsoleKey.Escape:
+                            cancelSource.Cancel();
+                            break;
+                        case ConsoleKey.C:
+                            if (keyInfo.Modifiers == ConsoleModifiers.Control)
+                                cancelSource.Cancel();
+                            break;
+                        case ConsoleKey.Spacebar:
+                            if (config.IsLogging)
+                                config.Logger.RollLog();
+                            break;
+                    }
+                }
+            });
+        #endregion Key handling
+
+        #region Serial read
+        static Task SerialReadAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    using (var serial = new SerialWrapper(config))
+                    {
+                        // Try open the port. Only one try is necessary
+                        if (!serial.Open())
+                            return;
+
+                        var isReadValid = true;
+                        while (isReadValid && !cancelToken.IsCancellationRequested)
+                        {
+                            var retries = 10;
+                            do
+                            {
+                                var result = await serial.ReadAsync(cancelToken);
+                                isReadValid = result.IsReadValid;
+                                if (isReadValid)
+                                    dataQueue.Post(result.Buffer);
+
+                                else
+                                {
+                                    Console.WriteLine($"{Environment.NewLine}WARNING: Cannot read from port {config.COMPort}. Retrying...");
+                                    serial.Close();
+                                    await Task.Delay(5000, cancelToken);
+
+                                    // Try re-open the serial port, as many times as we can
+                                    while (!serial.Open() && --retries > 0)
+                                        await Task.Delay(2000, cancelToken);
+                                }
+
+                            } while (retries > 0 && !isReadValid);
+                        }
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
+                }
+            });
+        }
+        #endregion Serial read
+
+        #region Log write
+        static Task LogWriteAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    using (var binLog = config.IsBinaryLogging ? File.Open(config.BinLogPath, FileMode.Create, FileAccess.Write, FileShare.Read) : null)
+                    {
+                        while (!cancelToken.IsCancellationRequested)
+                        {
+                            var dataBlock = await dataQueue.ReceiveAsync(cancelToken);
+                            if (dataBlock.Length > 0)
+                            {
+                                await config.Logger.WriteAsync(dataBlock, cancelToken);
+                                if (config.IsBinaryLogging)
+                                {
+                                    await binLog.WriteAsync(dataBlock, cancelToken);
+                                    await binLog.FlushAsync();
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
+                }
+            });
+        }
+        #endregion Log write
     }
 }

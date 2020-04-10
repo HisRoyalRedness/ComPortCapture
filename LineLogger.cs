@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace HisRoyalRedness.com
 {
@@ -41,12 +41,13 @@ namespace HisRoyalRedness.com
             }
         }
 
-        public void Write(byte[] buffer, int offset, int length)
+        public async Task WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancelToken)
         {
-            var msg = _outputLogger.Write(buffer, offset, length);
+            var msg = _outputLogger.Write(buffer);
             if (msg?.Length > 0)
             {
-                _logWriter?.Write(msg);
+                if (_logWriter != null)
+                    await _logWriter.WriteAsync(msg, cancelToken);
                 Console.Write(msg);
             }
         }
@@ -89,7 +90,8 @@ namespace HisRoyalRedness.com
 
     public interface IOutputLogger
     {
-        string Write(byte[] buffer, int offset, int length);
+        string Write(ReadOnlyMemory<byte> buffer);
+
         string Complete();
     }
 }

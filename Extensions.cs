@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.IO.Ports;
+using System.Text.RegularExpressions;
 
 namespace HisRoyalRedness.com
 {
@@ -35,7 +32,7 @@ namespace HisRoyalRedness.com
             {
                 if (Enum.TryParse<FileSizeUnit>(match.Value.ToUpper(), out unit))
                 {
-                    if (long.TryParse(value.ToUpper().Replace(unit.ToString(), "").Trim(), out size))
+                    if (long.TryParse(value.ToUpper().Replace(unit.ToString(), string.Empty).Trim(), out size))
                     {
                         var fullSize = Math.Pow(1024, (int)unit) * ((double)size);
                         return long.TryParse(fullSize.ToString(), out fileSize);
