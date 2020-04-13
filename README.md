@@ -5,6 +5,8 @@ It also supports output as hex
 # Usage
 
 ```
+ComPortCapture, version: 1.0.21
+
    Usage: ComPortCapture [com=]<comPort> [baud=<baudRate>] [config=<db,sb,pa,fl>] [noempty]
                          [logpath=<logFilePath>] [logsize=<maxLogSize>] [binfile=<binLogPath>]
                          [hex[=<hexCols>]]
