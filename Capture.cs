@@ -336,7 +336,10 @@ namespace HisRoyalRedness.com
                             var retries = 10;
                             do
                             {
-                                var result = await serial.ReadAsync(cancelToken);
+                                // TODO: Async method seems to mess double-read small portions of the string
+                                // TODO: Until I figure this out, just so to a synchronous read
+                                //var result = await serial.ReadAsync(cancelToken);
+                                var result = serial.Read();
                                 isReadValid = result.IsReadValid;
                                 if (isReadValid)
                                     dataQueue.Post(result.Buffer);

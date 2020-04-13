@@ -41,22 +41,6 @@ namespace HisRoyalRedness.com
             return true;
         }
 
-        public int Read(byte[] buffer, int offset, int bufferLen)
-        {
-            if (_port?.IsOpen ?? false)
-            {
-                try
-                {
-                    return _port.Read(buffer, offset, bufferLen);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"ERROR: Error reading serial port. {ex.Message}");
-                }
-            }
-            return -1;
-        }
-
         public async ValueTask<ReadResult> ReadAsync(CancellationToken cancelToken = default)
         {
             if (_port?.IsOpen ?? false)
@@ -65,13 +49,14 @@ namespace HisRoyalRedness.com
                 {
                     try
                     {
-                        var bytesRead = await _port.BaseStream.ReadAsync(_buffer, 0, _buffer.Length, cancelToken);
+                        byte[] buffer = new byte[BUFFER_SIZE];
+                        var bytesRead = await _port.BaseStream.ReadAsync(buffer, 0, buffer.Length, cancelToken);
                         if (bytesRead >= 0)
                         {
-                            var buffer = bytesRead == 0
+                            var mem = bytesRead == 0
                                 ? ReadOnlyMemory<byte>.Empty
-                                : new ReadOnlyMemory<byte>(_buffer, 0, bytesRead);
-                            return new ReadResult(buffer, true);
+                                : new ReadOnlyMemory<byte>(buffer, 0, bytesRead);
+                            return new ReadResult(mem, true);
                         }
                     }
                     catch (Exception ex)
@@ -82,6 +67,30 @@ namespace HisRoyalRedness.com
                     {
                         _semaphore.Release();
                     }
+                }
+            }
+            return new ReadResult(ReadOnlyMemory<byte>.Empty, false);
+        }
+
+        public ReadResult Read()
+        {
+            if (_port?.IsOpen ?? false)
+            {
+                try
+                {
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    var bytesRead = _port.Read(buffer, 0, buffer.Length);
+                    if (bytesRead >= 0)
+                    {
+                        var mem = bytesRead == 0
+                            ? ReadOnlyMemory<byte>.Empty
+                            : new ReadOnlyMemory<byte>(buffer, 0, bytesRead);
+                        return new ReadResult(mem, true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"ERROR: Error reading serial port. {ex.Message}");
                 }
             }
             return new ReadResult(ReadOnlyMemory<byte>.Empty, false);
@@ -114,8 +123,8 @@ namespace HisRoyalRedness.com
             public bool IsReadValid { get; set; }
         }
 
+        const int BUFFER_SIZE = 1024;
         readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-        byte[] _buffer = new byte[1024];
         SerialPort _port = null;
         readonly Configuration _config;
     }
