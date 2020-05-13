@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -246,8 +245,9 @@ namespace HisRoyalRedness.com
 
         static void PrintUsage()
         {
-            var version = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
-            var fileName = Path.GetFileNameWithoutExtension(FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileName);
+            var filePath = Process.GetCurrentProcess().MainModule.FileName;
+            var version = FileVersionInfo.GetVersionInfo(filePath).FileVersion;
+            var fileName = Path.GetFileNameWithoutExtension(filePath);
 
             const int alignment = -13;
             Console.WriteLine(
