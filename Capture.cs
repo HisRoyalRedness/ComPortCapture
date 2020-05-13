@@ -31,6 +31,7 @@ namespace HisRoyalRedness.com
 
             if (ParseCommandLine(args, out var config))
             {
+                string exitMsg = string.Empty;
                 using (config.Logger = new LineLogger(config))
                 {
                     var header =
@@ -67,8 +68,13 @@ namespace HisRoyalRedness.com
                     };
 
                     var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
-                    Console.WriteLine($"Exit: {taskList[index].Item1}");
+                    cancelSource.Cancel();
+                    Task.WaitAll(taskList.Select(t => t.Item2).ToArray());
+                    exitMsg = $"Exit: {taskList[index].Item1}";
                 }
+
+                if (!string.IsNullOrEmpty(exitMsg))
+                    Console.WriteLine(exitMsg);
             }
             else
                 Environment.ExitCode = 1;
@@ -359,7 +365,11 @@ namespace HisRoyalRedness.com
                         }
                     }
                 }
-                catch(Exception ex)
+                catch (OperationCanceledException)
+                {
+                    // Ignore cancellations
+                }
+                catch (Exception ex)
                 {
                     Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
                 }
@@ -385,11 +395,15 @@ namespace HisRoyalRedness.com
                                 if (config.IsBinaryLogging)
                                 {
                                     await binLog.WriteAsync(dataBlock, cancelToken);
-                                    await binLog.FlushAsync();
+                                    await binLog.FlushAsync(cancelToken);
                                 }
                             }
                         }
                     }
+                }
+                catch(OperationCanceledException)
+                {
+                    // Ignore cancellations
                 }
                 catch (Exception ex)
                 {

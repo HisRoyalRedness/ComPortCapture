@@ -45,29 +45,14 @@ namespace HisRoyalRedness.com
                         switch (value)
                         {
                             case '\r':
-                                if (_cr)
-                                    _state = WriteState.EndOfLine;
-                                _cr = true;
-                                hasChar = false; // Consume the current char
-                                break;
-
                             case '\n':
-                                _cr = false;
                                 _state = WriteState.EndOfLine;
                                 hasChar = false; // Consume the current char
                                 break;
 
                             default:
-                                if (_cr)
-                                {
-                                    _state = WriteState.EndOfLine;
-                                    _cr = false;
-                                }
-                                else
-                                {
-                                    sb.Append(value);
-                                    hasChar = false; // Consume the current char
-                                }
+                                sb.Append(value);
+                                hasChar = false; // Consume the current char
                                 break;
                         }
                         break;
@@ -91,6 +76,5 @@ namespace HisRoyalRedness.com
 
         readonly Configuration _config;
         WriteState _state = WriteState.StartOfLine;
-        bool _cr = false;
     }
 }
