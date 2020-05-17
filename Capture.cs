@@ -70,7 +70,7 @@ namespace HisRoyalRedness.com
                     var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
                     cancelSource.Cancel();
                     Task.WaitAll(taskList.Select(t => t.Item2).ToArray());
-                    exitMsg = $"Exit: {taskList[index].Item1}";
+                    exitMsg = $"{Environment.NewLine}Exit: {taskList[index].Item1}";
                 }
 
                 if (!string.IsNullOrEmpty(exitMsg))
