@@ -52,6 +52,17 @@ namespace HisRoyalRedness.com
             }
         }
 
+        public async Task WriteAsync(byte[] buffer, int offset, int length, CancellationToken cancelToken)
+        {
+            var msg = _outputLogger.Write(buffer, offset, length);
+            if (msg?.Length > 0)
+            {
+                if (_logWriter != null)
+                    await _logWriter.WriteAsync(msg, cancelToken);
+                Console.Write(msg);
+            }
+        }
+
         public void Dispose()
         {
             try
@@ -91,6 +102,7 @@ namespace HisRoyalRedness.com
     public interface IOutputLogger
     {
         string Write(ReadOnlyMemory<byte> buffer);
+        string Write(byte[] buffer, int offset, int length);
 
         string Complete();
     }

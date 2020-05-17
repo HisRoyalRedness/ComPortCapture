@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.IO.Ports;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,9 +13,14 @@ namespace HisRoyalRedness.com
     /// </summary>
     public sealed class SerialWrapper : IDisposable
     {
-        public SerialWrapper(Configuration config)
+        public SerialWrapper(Configuration config, ConcurrentCircularBuffer<byte> dataQueue, int bufferSize = DEFAULT_BUFFER_SIZE)
         {
+            if (bufferSize <= 0)
+                throw new ArgumentOutOfRangeException($"{nameof(bufferSize)} must be larger than zero.");
+            _bufferSize = bufferSize;
             _config = config;
+
+            Buffer = dataQueue;
         }
 
         public bool Open()
@@ -28,8 +35,10 @@ namespace HisRoyalRedness.com
                         DataBits = _config.DataBits,
                         StopBits = _config.StopBits,
                         Parity = _config.Parity,
-                        Handshake = _config.FlowControl
+                        Handshake = _config.FlowControl,
                     };
+                    if (_port.ReadBufferSize < _bufferSize)
+                        _port.ReadBufferSize = _bufferSize;
                     _port.Open();
                 }
                 catch(Exception ex)
@@ -41,51 +50,44 @@ namespace HisRoyalRedness.com
             return true;
         }
 
-        public async ValueTask<ReadResult> ReadAsync(CancellationToken cancelToken = default)
+        public async Task<int> ReadAsync(CancellationToken cancelToken = default)
         {
             if (_port?.IsOpen ?? false)
             {
-                await _semaphore.WaitAsync(cancelToken);
-                {
-                    try
-                    {
-                        byte[] buffer = new byte[BUFFER_SIZE];
-                        var bytesRead = await _port.BaseStream.ReadAsync(buffer, 0, buffer.Length, cancelToken);
-                        if (bytesRead >= 0)
-                        {
-                            var mem = bytesRead == 0
-                                ? ReadOnlyMemory<byte>.Empty
-                                : new ReadOnlyMemory<byte>(buffer, 0, bytesRead);
-                            return new ReadResult(mem, true);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"ERROR: Error reading serial port. {ex.Message}");
-                    }
-                    finally 
-                    {
-                        _semaphore.Release();
-                    }
-                }
-            }
-            return new ReadResult(ReadOnlyMemory<byte>.Empty, false);
-        }
-
-        public ReadResult Read()
-        {
-            if (_port?.IsOpen ?? false)
-            {
+                var buffer = new byte[_bufferSize];
                 try
                 {
-                    byte[] buffer = new byte[BUFFER_SIZE];
+                    var bytesRead = await _port.BaseStream.ReadAsync(buffer, 0, buffer.Length, cancelToken);
+                    if (bytesRead >= 0)
+                    {
+                        Buffer.Write(buffer, 0, bytesRead);
+                        return bytesRead;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // I don't want exceptions for cancelled tasks
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"ERROR: Error reading serial port. {ex.Message}");
+                }
+            }
+            return 0;
+        }
+
+        public int Read()
+        {
+            if (_port?.IsOpen ?? false)
+            {
+                var buffer = new byte[_bufferSize];
+                try
+                {
                     var bytesRead = _port.Read(buffer, 0, buffer.Length);
                     if (bytesRead >= 0)
                     {
-                        var mem = bytesRead == 0
-                            ? ReadOnlyMemory<byte>.Empty
-                            : new ReadOnlyMemory<byte>(buffer, 0, bytesRead);
-                        return new ReadResult(mem, true);
+                        Buffer.Write(buffer, 0, bytesRead);
+                        return bytesRead;
                     }
                 }
                 catch (Exception ex)
@@ -93,8 +95,10 @@ namespace HisRoyalRedness.com
                     Console.WriteLine($"ERROR: Error reading serial port. {ex.Message}");
                 }
             }
-            return new ReadResult(ReadOnlyMemory<byte>.Empty, false);
+            return 0;
         }
+
+        public ConcurrentCircularBuffer<byte> Buffer { get; }
 
         public void Close()
         {
@@ -106,25 +110,13 @@ namespace HisRoyalRedness.com
             _port = null;
         }
 
-        public void Dispose()
-        {
-            Close();
-        }
+        public void Dispose() => Close();
 
-        public struct ReadResult
-        {
-            public ReadResult(ReadOnlyMemory<byte> buffer, bool isReadValid)
-            {
-                Buffer = buffer;
-                IsReadValid = isReadValid;
-            }
 
-            public ReadOnlyMemory<byte> Buffer { get; private set; }
-            public bool IsReadValid { get; set; }
-        }
 
-        const int BUFFER_SIZE = 1024;
-        readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        const int DEFAULT_BUFFER_SIZE = 1024;
+
+        readonly int _bufferSize = DEFAULT_BUFFER_SIZE;
         SerialPort _port = null;
         readonly Configuration _config;
     }

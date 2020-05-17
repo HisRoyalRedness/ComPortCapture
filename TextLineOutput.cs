@@ -21,6 +21,17 @@ namespace HisRoyalRedness.com
             return sb.ToString();
         }
 
+        public string Write(byte[] buffer, int offset, int length)
+        {
+            if (length == 0)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            foreach (var c in Encoding.UTF8.GetString(buffer, offset, length))
+                Write(c, sb);
+            return sb.ToString();
+        }
+
         void Write(char value, StringBuilder sb)
         {
             var hasChar = true;

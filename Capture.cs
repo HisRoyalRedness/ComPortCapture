@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,11 +13,10 @@ using System.Threading.Tasks.Dataflow;
 
 namespace HisRoyalRedness.com
 {
-    using DataBuffer = BufferBlock<ReadOnlyMemory<byte>>;
+    using DataBuffer = ConcurrentCircularBuffer<byte>;
 
     class Program
     {
-
         enum ParseState
         {
             NewFile,
@@ -56,7 +57,7 @@ namespace HisRoyalRedness.com
                         config.Logger.Header = header;
                     Console.WriteLine(header);
 
-                    var dataQueue = new DataBuffer(); 
+                    var dataQueue = new DataBuffer();
                     var cancelSource = new CancellationTokenSource();
 
                     var taskList = new List<Tuple<string, Task>>()
@@ -330,27 +331,21 @@ namespace HisRoyalRedness.com
             {
                 try
                 {
-                    using (var serial = new SerialWrapper(config))
+                    using (var serial = new SerialWrapper(config, dataQueue, BUFFER_SIZE))
                     {
                         // Try open the port. Only one try is necessary
                         if (!serial.Open())
                             return;
 
+                        dataQueue = serial.Buffer;
                         var isReadValid = true;
                         while (isReadValid && !cancelToken.IsCancellationRequested)
                         {
                             var retries = 10;
                             do
                             {
-                                // TODO: Async method seems to mess double-read small portions of the string
-                                // TODO: Until I figure this out, just so to a synchronous read
-                                //var result = await serial.ReadAsync(cancelToken);
-                                var result = serial.Read();
-                                isReadValid = result.IsReadValid;
-                                if (isReadValid)
-                                    dataQueue.Post(result.Buffer);
-
-                                else
+                                var bytesRead = await serial.ReadAsync(cancelToken);
+                                if (bytesRead == 0)
                                 {
                                     Console.WriteLine($"{Environment.NewLine}WARNING: Cannot read from port {config.COMPort}. Retrying...");
                                     serial.Close();
@@ -382,19 +377,20 @@ namespace HisRoyalRedness.com
         {
             return Task.Run(async () =>
             {
+                var buffer = new byte[BUFFER_SIZE];
                 try
                 {
                     using (var binLog = config.IsBinaryLogging ? File.Open(config.BinLogPath, FileMode.Create, FileAccess.Write, FileShare.Read) : null)
                     {
                         while (!cancelToken.IsCancellationRequested)
                         {
-                            var dataBlock = await dataQueue.ReceiveAsync(cancelToken);
-                            if (dataBlock.Length > 0)
+                            var bytesRead = await dataQueue.BlockedReadAsync(buffer, 0, buffer.Length);
+                            if (bytesRead > 0)
                             {
-                                await config.Logger.WriteAsync(dataBlock, cancelToken);
+                                await config.Logger.WriteAsync(buffer, 0, bytesRead, cancelToken);
                                 if (config.IsBinaryLogging)
                                 {
-                                    await binLog.WriteAsync(dataBlock, cancelToken);
+                                    await binLog.WriteAsync(buffer, 0, bytesRead, cancelToken);
                                     await binLog.FlushAsync(cancelToken);
                                 }
                             }
@@ -412,5 +408,7 @@ namespace HisRoyalRedness.com
             });
         }
         #endregion Log write
+
+        const int BUFFER_SIZE = 1024;
     }
 }

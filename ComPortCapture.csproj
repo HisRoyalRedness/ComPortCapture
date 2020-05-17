@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="Common\C#\ConcurrentCircularBuffer.cs" />
     <Compile Include="Common\C#\RollableLogWriter.cs" />
   </ItemGroup>
 

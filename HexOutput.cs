@@ -23,6 +23,17 @@ namespace HisRoyalRedness.com
             return sb.ToString();
         }
 
+        public string Write(byte[] buffer, int offset, int length)
+        {
+            if (length == 0)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            for (int i = 0; i < length; ++i)
+                WriteByte(buffer[offset + i], sb);
+            return sb.ToString();
+        }
+
         void WriteByte(byte b, StringBuilder sb)
         {
             _asciiLine.Append(b < 0x20 ? '.' : (char)b);
