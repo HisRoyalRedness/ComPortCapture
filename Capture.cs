@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace HisRoyalRedness.com
 {
@@ -384,7 +381,7 @@ namespace HisRoyalRedness.com
                     {
                         while (!cancelToken.IsCancellationRequested)
                         {
-                            var bytesRead = await dataQueue.BlockedReadAsync(buffer, 0, buffer.Length);
+                            var bytesRead = await dataQueue.BlockedReadAsync(buffer, 0, buffer.Length, cancelToken);
                             if (bytesRead > 0)
                             {
                                 await config.Logger.WriteAsync(buffer, 0, bytesRead, cancelToken);

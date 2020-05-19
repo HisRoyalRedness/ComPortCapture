@@ -5,7 +5,7 @@ It also supports output as hex
 # Usage
 
 ```
-ComPortCapture, version: 1.0.21
+ComPortCapture, version: 1.0.30
 
    Usage: ComPortCapture [com=]<comPort> [baud=<baudRate>] [config=<db,sb,pa,fl>] [noempty]
                          [logpath=<logFilePath>] [logsize=<maxLogSize>] [binfile=<binLogPath>]
