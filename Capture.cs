@@ -64,9 +64,14 @@ namespace HisRoyalRedness.com
                         new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
                     };
 
+                    // Wait for any of the tasks to end
                     var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
+
+                    // Cancel the other tasks
                     cancelSource.Cancel();
-                    Task.WaitAll(taskList.Select(t => t.Item2).ToArray());
+
+                    // Wait for the logger to complete (it must be the last task!)
+                    Task.WaitAll(taskList.Select(t => t.Item2).Last());
                     exitMsg = $"{Environment.NewLine}Exit: {taskList[index].Item1}";
                 }
 
