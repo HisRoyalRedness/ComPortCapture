@@ -54,7 +54,7 @@ namespace HisRoyalRedness.com
                         config.Logger.Header = header;
                     Console.WriteLine(header);
 
-                    var dataQueue = new DataBuffer();
+                    var dataQueue = new DataBuffer(BUFFER_SIZE * 10);
                     var cancelSource = new CancellationTokenSource();
 
                     var taskList = new List<Tuple<string, Task>>()
@@ -333,13 +333,12 @@ namespace HisRoyalRedness.com
             {
                 try
                 {
-                    using (var serial = new SerialWrapper(config, dataQueue, BUFFER_SIZE))
+                    using (var serial = new SerialWrapper(config, dataQueue, BUFFER_SIZE / 2))
                     {
                         // Try open the port. Only one try is necessary
                         if (!serial.Open())
                             return;
 
-                        dataQueue = serial.Buffer;
                         var isReadValid = true;
                         while (isReadValid && !cancelToken.IsCancellationRequested)
                         {
