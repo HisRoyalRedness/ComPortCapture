@@ -36,7 +36,7 @@ namespace HisRoyalRedness.com
 
         void WriteByte(byte b, StringBuilder sb)
         {
-            _asciiLine.Append(b < 0x20 ? '.' : (char)b);
+            _asciiLine.Append((b < 0x20 || b == 0x7f) ? '.' : (char)b);
 
             if (_isStartOfLine)
             {
