@@ -248,7 +248,7 @@ namespace HisRoyalRedness.com
 
         static void PrintUsage()
         {
-            var filePath = "ComPortCapture"; // Process.GetCurrentProcess().MainModule.FileName;
+            var filePath = Process.GetCurrentProcess().MainModule.FileName;
             var version = FileVersionInfo.GetVersionInfo(filePath).FileVersion;
             var fileName = Path.GetFileNameWithoutExtension(filePath);
 
