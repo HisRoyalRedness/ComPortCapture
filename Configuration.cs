@@ -41,6 +41,8 @@ namespace HisRoyalRedness.com
 
         public bool IsHexMode { get; set; }
 
+        public bool AllowKeyEntry { get; set; }
+
         public int HexColumns { get; set; } = DEFAULT_HEXCOLS;
 
         public Encoding InputEncoding { get; set; } = null;

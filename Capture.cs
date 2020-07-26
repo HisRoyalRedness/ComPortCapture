@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,22 +58,36 @@ namespace HisRoyalRedness.com
                     var dataQueue = new DataBuffer(BUFFER_SIZE * 10);
                     var cancelSource = new CancellationTokenSource();
 
-                    var taskList = new List<Tuple<string, Task>>()
+                    using (var serial = new SerialWrapper(config, dataQueue, BUFFER_SIZE / 2))
                     {
-                        new Tuple<string, Task>( "Key handling", KeyHandlingAsync(config, cancelSource)),
-                        new Tuple<string, Task>( "Serial read", SerialReadAsync(config, dataQueue, cancelSource.Token) ),
-                        new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
-                    };
+                        try
+                        {
+                            var taskList = new List<Tuple<string, Task>>()
+                            {
+                                new Tuple<string, Task>( "Serial read", SerialReadAsync(config, dataQueue, cancelSource.Token, serial) ),
+                                new Tuple<string, Task>( "Key handling", KeyHandlingAsync(config, cancelSource, serial)),
+                                new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
+                            };
 
-                    // Wait for any of the tasks to end
-                    var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
+                            // Wait for any of the tasks to end
+                            var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
 
-                    // Cancel the other tasks
-                    cancelSource.Cancel();
+                            // Cancel the other tasks
+                            cancelSource.Cancel();
 
-                    // Wait for the logger to complete (it must be the last task!)
-                    Task.WaitAll(taskList.Select(t => t.Item2).Last());
-                    exitMsg = $"{Environment.NewLine}Exit: {taskList[index].Item1}";
+                            // Wait for the logger to complete (it must be the last task!)
+                            Task.WaitAll(taskList.Select(t => t.Item2).Last());
+                            exitMsg = $"{Environment.NewLine}Exit: {taskList[index].Item1}";
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            // Ignore cancellations
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
+                        }
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(exitMsg))
@@ -119,6 +134,10 @@ namespace HisRoyalRedness.com
                         // Hex mode
                         else if (string.Compare(arg, CMD_HEXMODE, true) == 0)
                             config.IsHexMode = true;
+
+                        // Key entry
+                        else if (string.Compare(arg, CMD_KEYENTRY, true) == 0)
+                            config.AllowKeyEntry = true;
 
                         // Anything else
                         else
@@ -258,7 +277,7 @@ namespace HisRoyalRedness.com
                 $"{Environment.NewLine}" +
                 $"   Usage: {fileName, -14} [{CMD_COMPORT}=]<comPort> [{CMD_BAUD}=<baudRate>] [{CMD_CONFIG}=<db,sb,pa,fl>] [{CMD_NOEMPTY}]{Environment.NewLine}" +
                 $"                         [{CMD_LOGPATH}=<logFilePath>] [{CMD_LOGSIZE}=<maxLogSize>] [{CMD_BINFILE}=<binLogPath>]{Environment.NewLine}" +
-                $"                         [{CMD_HEXMODE}[=<hexCols>]]{Environment.NewLine}" +
+                $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}]{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
                 $"      where:{Environment.NewLine}" +
                 $"         comPort:     The COM port to connect to, eg. COM1.{Environment.NewLine}" +
@@ -273,20 +292,22 @@ namespace HisRoyalRedness.com
                 $"         maxLogSize:  The size at which the log file rolls over, eg. 10KB, 1MB etc. Default is {Configuration.DEFAULT_FILE_SIZE.ToFileSize()}.{Environment.NewLine}" +
                 $"         binLogPath:  The path to a file to log data in a binary format.{Environment.NewLine}" +
                 $"         {CMD_HEXMODE + ":",alignment}Display data as hex. Optionally specify the number of columns. Default is {Configuration.DEFAULT_HEXCOLS}.{Environment.NewLine}" +
+                $"         {CMD_KEYENTRY + ":",alignment}All simple keyboard entry to be sent over the serial port.{Environment.NewLine}" +
                 $"{Environment.NewLine}"
             );
         }
 
         static bool IsComPort(string inp) => _comPortRegex.Match(inp).Success;
 
-        const string CMD_COMPORT = "com";
-        const string CMD_BAUD = "baud";
-        const string CMD_CONFIG = "config";
-        const string CMD_LOGPATH = "logpath";
-        const string CMD_LOGSIZE = "logsize";
-        const string CMD_BINFILE = "binfile";
-        const string CMD_NOEMPTY = "noempty";
-        const string CMD_HEXMODE = "hex";
+        const string CMD_COMPORT    = "com";
+        const string CMD_BAUD       = "baud";
+        const string CMD_CONFIG     = "config";
+        const string CMD_LOGPATH    = "logpath";
+        const string CMD_LOGSIZE    = "logsize";
+        const string CMD_BINFILE    = "binfile";
+        const string CMD_NOEMPTY    = "noempty";
+        const string CMD_HEXMODE    = "hex";
+        const string CMD_KEYENTRY   = "key";
 
 
         static readonly string DEFAULT_CONFIG = $"{Configuration.DEFAULT_DATA_BITS},{Configuration.DEFAULT_STOP_BITS.ToConfigString()},{Configuration.DEFAULT_PARITY.ToConfigString()},{Configuration.DEFAULT_FLOW_CONTROL.ToConfigString()}";
@@ -296,69 +317,71 @@ namespace HisRoyalRedness.com
         #endregion Command line parsing
 
         #region Key handling
-        static Task KeyHandlingAsync(Configuration config, CancellationTokenSource cancelSource)
+        static Task KeyHandlingAsync(Configuration config, CancellationTokenSource cancelSource, SerialWrapper serial)
             => Task.Run(() =>
             {
-                Console.WriteLine("Hit 'Q', Esc or Ctrl-C to quit");
+                Console.WriteLine("Ctrl-C to quit");
                 if (config.IsLogging)
-                    Console.WriteLine("Hit 'Space' to start logging to a new log file");
+                    Console.WriteLine("Ctrl-Space to start logging to a new log file");
                 Console.WriteLine();
 
                 while (!cancelSource.IsCancellationRequested)
                 {
                     var keyInfo = Console.ReadKey(true);
-                    switch (keyInfo.Key)
+                    // Application control
+                    if (keyInfo.Modifiers == ConsoleModifiers.Control)
                     {
-                        case ConsoleKey.Q:
-                        case ConsoleKey.Escape:
-                            cancelSource.Cancel();
-                            break;
-                        case ConsoleKey.C:
-                            if (keyInfo.Modifiers == ConsoleModifiers.Control)
+                        switch (keyInfo.Key)
+                        {
+                            case ConsoleKey.C:
                                 cancelSource.Cancel();
-                            break;
-                        case ConsoleKey.Spacebar:
-                            if (config.IsLogging)
-                                config.Logger.RollLog();
-                            break;
+                                break;
+                            case ConsoleKey.Spacebar:
+                                if (config.IsLogging)
+                                    config.Logger.RollLog();
+                                break;
+                        }
+                    }
+                    // Text input
+                    else if (config.AllowKeyEntry)
+                    {
+                        var data = Encoding.ASCII.GetBytes(new[] { keyInfo.KeyChar });
+                        serial.WriteAsync(data, 0, data.Length);
                     }
                 }
             });
         #endregion Key handling
 
         #region Serial read
-        static Task SerialReadAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken)
+        static Task SerialReadAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken, SerialWrapper serial)
         {
             return Task.Run(async () =>
             {
                 try
                 {
-                    using (var serial = new SerialWrapper(config, dataQueue, BUFFER_SIZE / 2))
+                    // Try open the port. Only one try is necessary
+                    if (!serial.Open())
+                        return;
+
+                    var isReadValid = true;
+                    while (isReadValid && !cancelToken.IsCancellationRequested)
                     {
-                        // Try open the port. Only one try is necessary
-                        if (!serial.Open())
-                            return;
-
-                        var isReadValid = true;
-                        while (isReadValid && !cancelToken.IsCancellationRequested)
+                        var retries = 10;
+                        do
                         {
-                            var retries = 10;
-                            do
+                            var bytesRead = await serial.ReadAsync(cancelToken);
+                            if (bytesRead == 0)
                             {
-                                var bytesRead = await serial.ReadAsync(cancelToken);
-                                if (bytesRead == 0)
-                                {
-                                    Console.WriteLine($"{Environment.NewLine}WARNING: Cannot read from port {config.COMPort}. Retrying...");
-                                    serial.Close();
-                                    await Task.Delay(5000, cancelToken);
+                                Console.WriteLine($"{Environment.NewLine}WARNING: Cannot read from port {config.COMPort}. Retrying...");
+                                serial.Close();
+                                await Task.Delay(5000, cancelToken);
 
-                                    // Try re-open the serial port, as many times as we can
-                                    while (!serial.Open() && --retries > 0)
-                                        await Task.Delay(2000, cancelToken);
-                                }
+                                // Try re-open the serial port, as many times as we can
+                                while (!serial.Open() && --retries > 0)
+                                    await Task.Delay(2000, cancelToken);
+                            }
 
-                            } while (retries > 0 && !isReadValid);
-                        }
+                        } while (retries > 0 && !isReadValid);
                     }
                 }
                 catch (OperationCanceledException)

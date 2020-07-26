@@ -98,6 +98,17 @@ namespace HisRoyalRedness.com
             return 0;
         }
 
+        public Task WriteAsync(byte[] buffer, int offset, int length)
+            => (_port?.IsOpen ?? false)
+                ? _port.BaseStream.WriteAsync(buffer, offset, length)
+                : Task.CompletedTask;
+
+        public void Write(byte[] buffer, int offset, int length)
+        {
+            if (_port?.IsOpen ?? false)
+                _port.Write(buffer, offset, length);
+        }
+
         public ConcurrentCircularBuffer<byte> Buffer { get; }
 
         public void Close()
