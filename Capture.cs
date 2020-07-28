@@ -39,7 +39,8 @@ namespace HisRoyalRedness.com
                         $"Stop bits:      {config.StopBits}{Environment.NewLine}" +
                         $"Parity:         {config.Parity}{Environment.NewLine}" +
                         $"Flow control:   {config.FlowControl}{Environment.NewLine}" +
-                        $"Ignore empty:   {config.IgnoreEmptyLines}{Environment.NewLine}";
+                        $"Ignore empty:   {config.IgnoreEmptyLines}{Environment.NewLine}" +
+                        $"Allow keypress: {config.AllowKeyEntry}{Environment.NewLine}";
 
                     if (config.IsBinaryLogging)
                         header += $"Binary log:     {config.BinLogPath}{Environment.NewLine}";
