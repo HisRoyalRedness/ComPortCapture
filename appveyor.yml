@@ -13,3 +13,14 @@ build_script:
 artifacts:
 - path: ComPortCapture.exe
   name: WinExe
+deploy:
+  release: ComPortCapture-v$(appveyor_build_version)
+  description: 'ComPortCapture v$(appveyor_build_version)'
+  provider: GitHub
+  auth_token:
+    secure: AEtI3GmN+Gq2OZy5ptC8RTg7EIFdhNWo8Q8UZN3KrkyqVdZlG/V6ZgL79pJ38/+V
+  artifact: ComPortCapture.exe
+  draft: false
+  prerelease: false
+  on:
+    branch: master
