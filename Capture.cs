@@ -373,6 +373,11 @@ namespace HisRoyalRedness.com
                             var bytesRead = await serial.ReadAsync(cancelToken);
                             if (bytesRead == 0)
                             {
+                                // ReadAsync terminated because we cancelled a task.
+                                // Just jump out
+                                if (cancelToken.IsCancellationRequested)
+                                    break;
+
                                 Console.WriteLine($"{Environment.NewLine}WARNING: Cannot read from port {config.COMPort}. Retrying...");
                                 serial.Close();
                                 await Task.Delay(5000, cancelToken);
