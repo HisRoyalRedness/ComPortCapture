@@ -1,10 +1,13 @@
 # ComPortCapture
+
+[![Build Status][BS img]][Build Status] ![GitHub release (latest by date)](https://img.shields.io/github/v/release/HisRoyalRedness/ComPortCapture)
+
 Capture output from a COM port, with each line timestamped.
 It also supports output as hex
 
-# Usage
+## Usage
 
-```
+```txt
 ComPortCapture, version: 1.0.30
 
    Usage: ComPortCapture [com=]<comPort> [baud=<baudRate>] [config=<db,sb,pa,fl>] [noempty]
@@ -29,10 +32,6 @@ ComPortCapture, version: 1.0.30
 For example,
 
 ```ComPortCapture com3 baud=11520 noempty logpath=Logs```
-
-[![Build Status][BS img]][Build Status]
-
-[Latest binary](https://github.com/HisRoyalRedness/ComPortCapture/releases/latest)
 
 [Build Status]: https://ci.appveyor.com/project/KeithFletcher/comportcapture
 [BS img]: https://ci.appveyor.com/api/projects/status/vvtdknw55lih8l8w?svg=true
