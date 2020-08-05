@@ -32,7 +32,7 @@ For example,
 
 [![Build Status][BS img]][Build Status]
 
-[Latest binary](https://ci.appveyor.com/api/projects/KeithFletcher/comportcapture/artifacts/ComPortCapture.exe)
+[Latest binary](https://github.com/HisRoyalRedness/ComPortCapture/releases/latest)
 
 [Build Status]: https://ci.appveyor.com/project/KeithFletcher/comportcapture
 [BS img]: https://ci.appveyor.com/api/projects/status/vvtdknw55lih8l8w?svg=true
