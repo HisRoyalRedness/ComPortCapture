@@ -1,6 +1,6 @@
 # ComPortCapture
 
-[![Build Status][BS img]][Build Status] ![GitHub release (latest by date)](https://img.shields.io/github/v/release/HisRoyalRedness/ComPortCapture)
+[![Build Status][BS img]][Build Status]  [![Release Link][Release img]][Release Link]
 
 Capture output from a COM port, with each line timestamped.
 It also supports output as hex
@@ -35,3 +35,6 @@ For example,
 
 [Build Status]: https://ci.appveyor.com/project/KeithFletcher/comportcapture
 [BS img]: https://ci.appveyor.com/api/projects/status/vvtdknw55lih8l8w?svg=true
+
+[Release Link]: https://github.com/HisRoyalRedness/ComPortCapture/releases/latest
+[Release img]: https://img.shields.io/github/v/release/HisRoyalRedness/ComPortCapture
