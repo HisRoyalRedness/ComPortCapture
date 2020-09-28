@@ -47,7 +47,9 @@ namespace HisRoyalRedness.com
                             break;
                         }
 
-                        sb.Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff: "));
+                        var dateStr = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff: ");
+                        _lineLen = dateStr.Length;
+                        sb.Append(dateStr);
                         _state = WriteState.MiddleOfLine;
                         break;
 
@@ -62,8 +64,17 @@ namespace HisRoyalRedness.com
                                 break;
 
                             default:
-                                sb.Append(value);
-                                hasChar = false; // Consume the current char
+                                // Must we wrap the line?
+                                if (_config.LineWrap && _lineLen >= _MIN_WRAP_WIDTH && _lineLen >= Console.WindowWidth)
+                                {
+                                    _state = WriteState.EndOfLine;
+                                }
+                                else
+                                {
+                                    hasChar = false; // Consume the current char
+                                    sb.Append(value);
+                                    ++_lineLen;
+                                }
                                 break;
                         }
                         break;
@@ -82,9 +93,11 @@ namespace HisRoyalRedness.com
         {
             StartOfLine,
             MiddleOfLine,
-            EndOfLine
+            EndOfLine,
         }
 
+        int _lineLen = 0;
+        const int _MIN_WRAP_WIDTH = 30; // Don't wrap smaller than this. 
         readonly Configuration _config;
         WriteState _state = WriteState.StartOfLine;
     }

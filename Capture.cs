@@ -40,6 +40,7 @@ namespace HisRoyalRedness.com
                         $"Parity:         {config.Parity}{Environment.NewLine}" +
                         $"Flow control:   {config.FlowControl}{Environment.NewLine}" +
                         $"Ignore empty:   {config.IgnoreEmptyLines}{Environment.NewLine}" +
+                        $"Line wrap:      {config.LineWrap}{Environment.NewLine}" +
                         $"Allow keypress: {config.AllowKeyEntry}{Environment.NewLine}";
 
                     if (config.IsBinaryLogging)
@@ -129,16 +130,20 @@ namespace HisRoyalRedness.com
                         }
 
                         // Ignore empty lines
-                        else if (string.Compare(arg, CMD_NOEMPTY, true) == 0)
+                        else if (IsSwitchPresent(arg, CMD_NOEMPTY))
                             config.IgnoreEmptyLines = true;
 
                         // Hex mode
-                        else if (string.Compare(arg, CMD_HEXMODE, true) == 0)
+                        else if (IsSwitchPresent(arg, CMD_HEXMODE))
                             config.IsHexMode = true;
 
                         // Key entry
-                        else if (string.Compare(arg, CMD_KEYENTRY, true) == 0)
+                        else if (IsSwitchPresent(arg, CMD_KEYENTRY))
                             config.AllowKeyEntry = true;
+
+                        // Line wrap
+                        else if (IsSwitchPresent(arg, CMD_WRAP))
+                            config.LineWrap = true;
 
                         // Anything else
                         else
@@ -278,7 +283,7 @@ namespace HisRoyalRedness.com
                 $"{Environment.NewLine}" +
                 $"   Usage: {fileName, -14} [{CMD_COMPORT}=]<comPort> [{CMD_BAUD}=<baudRate>] [{CMD_CONFIG}=<db,sb,pa,fl>] [{CMD_NOEMPTY}]{Environment.NewLine}" +
                 $"                         [{CMD_LOGPATH}=<logFilePath>] [{CMD_LOGSIZE}=<maxLogSize>] [{CMD_BINFILE}=<binLogPath>]{Environment.NewLine}" +
-                $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}]{Environment.NewLine}" +
+                $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}] [{CMD_WRAP}]{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
                 $"      where:{Environment.NewLine}" +
                 $"         comPort:     The COM port to connect to, eg. COM1.{Environment.NewLine}" +
@@ -294,11 +299,13 @@ namespace HisRoyalRedness.com
                 $"         binLogPath:  The path to a file to log data in a binary format.{Environment.NewLine}" +
                 $"         {CMD_HEXMODE + ":",alignment}Display data as hex. Optionally specify the number of columns. Default is {Configuration.DEFAULT_HEXCOLS}.{Environment.NewLine}" +
                 $"         {CMD_KEYENTRY + ":",alignment}All simple keyboard entry to be sent over the serial port.{Environment.NewLine}" +
+                $"         {CMD_WRAP + ":",alignment}Wrap the line if it's longer than the console window.{Environment.NewLine}" +
                 $"{Environment.NewLine}"
             );
         }
 
         static bool IsComPort(string inp) => _comPortRegex.Match(inp).Success;
+        static bool IsSwitchPresent(string arg, string swtch) => string.Compare(arg, swtch, true) == 0;
 
         const string CMD_COMPORT    = "com";
         const string CMD_BAUD       = "baud";
@@ -309,6 +316,7 @@ namespace HisRoyalRedness.com
         const string CMD_NOEMPTY    = "noempty";
         const string CMD_HEXMODE    = "hex";
         const string CMD_KEYENTRY   = "key";
+        const string CMD_WRAP       = "wrap";
 
 
         static readonly string DEFAULT_CONFIG = $"{Configuration.DEFAULT_DATA_BITS},{Configuration.DEFAULT_STOP_BITS.ToConfigString()},{Configuration.DEFAULT_PARITY.ToConfigString()},{Configuration.DEFAULT_FLOW_CONTROL.ToConfigString()}";
