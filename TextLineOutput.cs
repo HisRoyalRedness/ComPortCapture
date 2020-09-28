@@ -65,7 +65,7 @@ namespace HisRoyalRedness.com
 
                             default:
                                 // Must we wrap the line?
-                                if (_config.LineWrap && _lineLen >= _MIN_WRAP_WIDTH && _lineLen >= Console.WindowWidth)
+                                if (_config.LineWrap && _lineLen >= _MIN_WRAP_WIDTH && _lineLen >= Console.WindowWidth - 1)
                                 {
                                     _state = WriteState.EndOfLine;
                                 }
