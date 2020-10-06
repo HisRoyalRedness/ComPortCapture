@@ -40,8 +40,9 @@ namespace HisRoyalRedness.com
                 switch (_state)
                 {
                     case WriteState.StartOfLine:
-                        // If we're ignoring empty lines, discard all newline chars at the front of a line
-                        if ((value == '\r' || value == '\n') && _config.IgnoreEmptyLines)
+                        // If we're ignoring empty lines, discard all newline chars 
+                        // and null chars from the front of a line
+                        if ((value == '\r' || value == '\n' || value == '\0') && _config.IgnoreEmptyLines)
                         {
                             hasChar = false;
                             break;
