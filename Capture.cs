@@ -145,6 +145,10 @@ namespace HisRoyalRedness.com
                         else if (IsSwitchPresent(arg, CMD_WRAP))
                             config.LineWrap = true;
 
+                        // Enumerate ports
+                        else if (IsSwitchPresent(arg, CMD_ENUM_PORTS))
+                            config.EnumeratePorts = true;
+
                         // Anything else
                         else
                         {
@@ -262,6 +266,19 @@ namespace HisRoyalRedness.com
                 }
             } //foreach
 
+            if (config.EnumeratePorts)
+            {
+                var ports = SerialPort
+                    .GetPortNames()
+                    .OrderBy(p => int.TryParse(
+                        p.Replace("COM", string.Empty, StringComparison.CurrentCultureIgnoreCase),
+                        out int portInt)
+                    ? portInt
+                    : -1);
+    
+                Console.WriteLine($"Available ports: {string.Join(", ", ports)}{Environment.NewLine}");
+            }
+
             if (string.IsNullOrEmpty(config.COMPort))
             {
                 PrintUsage();
@@ -283,7 +300,7 @@ namespace HisRoyalRedness.com
                 $"{Environment.NewLine}" +
                 $"   Usage: {fileName, -14} [{CMD_COMPORT}=]<comPort> [{CMD_BAUD}=<baudRate>] [{CMD_CONFIG}=<db,sb,pa,fl>] [{CMD_NOEMPTY}]{Environment.NewLine}" +
                 $"                         [{CMD_LOGPATH}=<logFilePath>] [{CMD_LOGSIZE}=<maxLogSize>] [{CMD_BINFILE}=<binLogPath>]{Environment.NewLine}" +
-                $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}] [{CMD_WRAP}]{Environment.NewLine}" +
+                $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}] [{CMD_WRAP}] [{CMD_ENUM_PORTS}]{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
                 $"      where:{Environment.NewLine}" +
                 $"         comPort:     The COM port to connect to, eg. COM1.{Environment.NewLine}" +
@@ -300,6 +317,7 @@ namespace HisRoyalRedness.com
                 $"         {CMD_HEXMODE + ":",alignment}Display data as hex. Optionally specify the number of columns. Default is {Configuration.DEFAULT_HEXCOLS}.{Environment.NewLine}" +
                 $"         {CMD_KEYENTRY + ":",alignment}All simple keyboard entry to be sent over the serial port.{Environment.NewLine}" +
                 $"         {CMD_WRAP + ":",alignment}Wrap the line if it's longer than the console window.{Environment.NewLine}" +
+                $"         {CMD_ENUM_PORTS + ":",alignment}Enumerate the available serial ports.{Environment.NewLine}" +
                 $"{Environment.NewLine}"
             );
         }
@@ -317,6 +335,7 @@ namespace HisRoyalRedness.com
         const string CMD_HEXMODE    = "hex";
         const string CMD_KEYENTRY   = "key";
         const string CMD_WRAP       = "wrap";
+        const string CMD_ENUM_PORTS = "ports";
 
 
         static readonly string DEFAULT_CONFIG = $"{Configuration.DEFAULT_DATA_BITS},{Configuration.DEFAULT_STOP_BITS.ToConfigString()},{Configuration.DEFAULT_PARITY.ToConfigString()},{Configuration.DEFAULT_FLOW_CONTROL.ToConfigString()}";

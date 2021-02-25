@@ -45,6 +45,8 @@ namespace HisRoyalRedness.com
 
         public bool LineWrap { get; set; }
 
+        public bool EnumeratePorts { get; set; }
+
         public int HexColumns { get; set; } = DEFAULT_HEXCOLS;
 
         public Encoding InputEncoding { get; set; } = null;
