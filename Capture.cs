@@ -32,26 +32,7 @@ namespace HisRoyalRedness.com
                 string exitMsg = string.Empty;
                 using (config.Logger = new LineLogger(config))
                 {
-                    var header =
-                        $"COM port:       {config.COMPort}{Environment.NewLine}" +
-                        $"Baud rate:      {config.BaudRate}{Environment.NewLine}" +
-                        $"Data bits:      {config.DataBits}{Environment.NewLine}" +
-                        $"Stop bits:      {config.StopBits}{Environment.NewLine}" +
-                        $"Parity:         {config.Parity}{Environment.NewLine}" +
-                        $"Flow control:   {config.FlowControl}{Environment.NewLine}" +
-                        $"Ignore empty:   {config.IgnoreEmptyLines}{Environment.NewLine}" +
-                        $"Line wrap:      {config.LineWrap}{Environment.NewLine}" +
-                        $"Allow keypress: {config.AllowKeyEntry}{Environment.NewLine}";
-
-                    if (config.IsBinaryLogging)
-                        header += $"Binary log:     {config.BinLogPath}{Environment.NewLine}";
-
-                    if (config.IsLogging)
-                        header +=
-                            $"Log path:       {config.LogPath}{Environment.NewLine}" +
-                            $"Log file size:  {config.LogFileSize.ToFileSize()}{Environment.NewLine}";
-                    else
-                        header += $"Not logging to file{Environment.NewLine}";
+                    var header = GenerateHeader(config);
 
                     if (config.IsLogging)
                         config.Logger.Header = header;
@@ -97,6 +78,32 @@ namespace HisRoyalRedness.com
             }
             else
                 Environment.ExitCode = 1;
+        }
+
+        static string GenerateHeader(Configuration config)
+        {
+            var header =
+                $"COM port:       {config.COMPort}{Environment.NewLine}" +
+                $"Baud rate:      {config.BaudRate}{Environment.NewLine}" +
+                $"Data bits:      {config.DataBits}{Environment.NewLine}" +
+                $"Stop bits:      {config.StopBits}{Environment.NewLine}" +
+                $"Parity:         {config.Parity}{Environment.NewLine}" +
+                $"Flow control:   {config.FlowControl}{Environment.NewLine}" +
+                $"Ignore empty:   {config.IgnoreEmptyLines}{Environment.NewLine}" +
+                $"Line wrap:      {config.LineWrap}{Environment.NewLine}" +
+                $"Allow keypress: {config.AllowKeyEntry}{Environment.NewLine}";
+
+            if (config.IsBinaryLogging)
+                header += $"Binary log:     {config.BinLogPath}{Environment.NewLine}";
+
+            if (config.IsLogging)
+                header +=
+                    $"Log path:       {config.LogPath}{Environment.NewLine}" +
+                    $"Log file size:  {config.LogFileSize.ToFileSize()}{Environment.NewLine}";
+            else
+                header += $"Not logging to file{Environment.NewLine}";
+
+            return header;
         }
 
         #region Command line parsing
@@ -367,6 +374,12 @@ namespace HisRoyalRedness.com
                                 break;
                             case ConsoleKey.X:
                                 Console.Clear();
+                                Console.WriteLine(GenerateHeader(config));
+                                Console.WriteLine("Ctrl-C to quit");
+                                Console.WriteLine("Ctrl-X to clear screen");
+                                if (config.IsLogging)
+                                    Console.WriteLine("Ctrl-Space to start logging to a new log file");
+                                Console.WriteLine();
                                 break;
                             case ConsoleKey.Spacebar:
                                 if (config.IsLogging)
