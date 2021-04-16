@@ -349,6 +349,7 @@ namespace HisRoyalRedness.com
             => Task.Run(() =>
             {
                 Console.WriteLine("Ctrl-C to quit");
+                Console.WriteLine("Ctrl-X to clear screen");
                 if (config.IsLogging)
                     Console.WriteLine("Ctrl-Space to start logging to a new log file");
                 Console.WriteLine();
@@ -363,6 +364,9 @@ namespace HisRoyalRedness.com
                         {
                             case ConsoleKey.C:
                                 cancelSource.Cancel();
+                                break;
+                            case ConsoleKey.X:
+                                Console.Clear();
                                 break;
                             case ConsoleKey.Spacebar:
                                 if (config.IsLogging)
