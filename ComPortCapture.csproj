@@ -9,6 +9,8 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishSingleFile>true</PublishSingleFile>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Authors>Keith Fletcher</Authors>
+    <Company>Gallagher Group Ltd</Company>
   </PropertyGroup>
 
   <ItemGroup>
