@@ -8,11 +8,11 @@ It also supports output as hex
 ## Usage
 
 ```txt
-ComPortCapture, version: 1.0.30
+ComPortCapture, version: 1.0.58
 
    Usage: ComPortCapture [com=]<comPort> [baud=<baudRate>] [config=<db,sb,pa,fl>] [noempty]
                          [logpath=<logFilePath>] [logsize=<maxLogSize>] [binfile=<binLogPath>]
-                         [hex[=<hexCols>]]
+                         [hex[=<hexCols>]] [key] [wrap] [ports] [save=<name>] [load=<name>]
 
       where:
          comPort:     The COM port to connect to, eg. COM1.
@@ -27,6 +27,10 @@ ComPortCapture, version: 1.0.30
          maxLogSize:  The size at which the log file rolls over, eg. 10KB, 1MB etc. Default is 10 MB.
          binLogPath:  The path to a file to log data in a binary format.
          hex:         Display data as hex. Optionally specify the number of columns. Default is 16.
+         key:         All simple keyboard entry to be sent over the serial port.
+         wrap:        Wrap the line if it's longer than the console window.
+         save:        Save the configuration as <name>.
+         load:        Load the configuration from <name>.
 ```
 
 For example,
