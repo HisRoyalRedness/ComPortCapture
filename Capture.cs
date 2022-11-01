@@ -1,4 +1,10 @@
-﻿using System;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Configuration;
+using Microsoft.Extensions.Logging.EventLog;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -25,8 +31,16 @@ namespace HisRoyalRedness.com
         [STAThread]
         static void Main(string[] args)
         {
-            Console.TreatControlCAsInput = true;
+            RunAsConsole(args);
+            //if (Environment.UserInteractive)
+            //    RunAsConsole(args);
+            //else
+            //    RunAsService(args);
+        }
 
+        static void RunAsConsole(string[] args)
+        {
+            Console.TreatControlCAsInput = true;
             if (ParseCommandLine(args, out var config))
             {
                 string exitMsg = string.Empty;
@@ -46,11 +60,11 @@ namespace HisRoyalRedness.com
                         try
                         {
                             var taskList = new List<Tuple<string, Task>>()
-                            {
-                                new Tuple<string, Task>( "Serial read", SerialReadAsync(config, dataQueue, cancelSource.Token, serial) ),
-                                new Tuple<string, Task>( "Key handling", KeyHandlingAsync(config, cancelSource, serial)),
-                                new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
-                            };
+                        {
+                            new Tuple<string, Task>( "Serial read", SerialReadAsync(config, dataQueue, cancelSource.Token, serial) ),
+                            new Tuple<string, Task>( "Key handling", KeyHandlingAsync(config, cancelSource, serial)),
+                            new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
+                        };
 
                             // Wait for any of the tasks to end
                             var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
@@ -79,6 +93,31 @@ namespace HisRoyalRedness.com
             else
                 Environment.ExitCode = 1;
         }
+
+        //static void RunAsService(string[] args)
+        //{
+        //    IHost host = Host.CreateDefaultBuilder(args)
+               
+        //        .UseWindowsService(options =>
+        //        {
+        //            options.ServiceName = "ComPortCapture";
+        //        })
+        //        .ConfigureServices(services =>
+        //        {
+        //            LoggerProviderOptions.RegisterProviderOptions<EventLogSettings, EventLogLoggerProvider>(services);
+
+        //            //services.AddSingleton<PortMonitor>();
+        //            //services.AddHostedService<WindowsBackgroundService>();
+        //        })
+        //        .ConfigureLogging((context, logging) =>
+        //        {
+        //            // See: https://github.com/dotnet/runtime/issues/47303
+        //            logging.AddConfiguration(context.Configuration.GetSection("Logging"));
+        //        })
+        //        .Build();
+
+        //    host.Run();
+        //}
 
         static string GenerateHeader(Configuration config)
         {
@@ -259,6 +298,13 @@ namespace HisRoyalRedness.com
                                 }
                                 break;
 
+                            case CMD_SAVE:
+                                config.SaveName = split[1];
+                                break;
+
+                            case CMD_LOAD:
+                                config.LoadName = split[1];
+                                break;
 
                             default:
                                 Console.WriteLine($"ERROR: Unknown argument '{split[0]}'.");
@@ -272,6 +318,14 @@ namespace HisRoyalRedness.com
                         return false;
                 }
             } //foreach
+
+            if (!string.IsNullOrWhiteSpace(config.SaveName) &&
+                !config.Save(config.SaveName))
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(config.LoadName) &&
+                !config.Load(config.LoadName))
+                return false;
 
             if (config.EnumeratePorts)
             {
@@ -307,7 +361,7 @@ namespace HisRoyalRedness.com
                 $"{Environment.NewLine}" +
                 $"   Usage: {fileName, -14} [{CMD_COMPORT}=]<comPort> [{CMD_BAUD}=<baudRate>] [{CMD_CONFIG}=<db,sb,pa,fl>] [{CMD_NOEMPTY}]{Environment.NewLine}" +
                 $"                         [{CMD_LOGPATH}=<logFilePath>] [{CMD_LOGSIZE}=<maxLogSize>] [{CMD_BINFILE}=<binLogPath>]{Environment.NewLine}" +
-                $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}] [{CMD_WRAP}] [{CMD_ENUM_PORTS}]{Environment.NewLine}" +
+                $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}] [{CMD_WRAP}] [{CMD_ENUM_PORTS}] [{CMD_SAVE}=<name>] [{CMD_LOAD}=<name>]{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
                 $"      where:{Environment.NewLine}" +
                 $"         comPort:     The COM port to connect to, eg. COM1.{Environment.NewLine}" +
@@ -324,7 +378,8 @@ namespace HisRoyalRedness.com
                 $"         {CMD_HEXMODE + ":",alignment}Display data as hex. Optionally specify the number of columns. Default is {Configuration.DEFAULT_HEXCOLS}.{Environment.NewLine}" +
                 $"         {CMD_KEYENTRY + ":",alignment}All simple keyboard entry to be sent over the serial port.{Environment.NewLine}" +
                 $"         {CMD_WRAP + ":",alignment}Wrap the line if it's longer than the console window.{Environment.NewLine}" +
-                $"         {CMD_ENUM_PORTS + ":",alignment}Enumerate the available serial ports.{Environment.NewLine}" +
+                $"         {CMD_SAVE + ":",alignment}Save the configuration as <name>.{Environment.NewLine}" +
+                $"         {CMD_LOAD + ":",alignment}Load the configuration from <name>.{Environment.NewLine}" +
                 $"{Environment.NewLine}"
             );
         }
@@ -343,6 +398,8 @@ namespace HisRoyalRedness.com
         const string CMD_KEYENTRY   = "key";
         const string CMD_WRAP       = "wrap";
         const string CMD_ENUM_PORTS = "ports";
+        const string CMD_SAVE       = "save";
+        const string CMD_LOAD       = "load";
 
 
         static readonly string DEFAULT_CONFIG = $"{Configuration.DEFAULT_DATA_BITS},{Configuration.DEFAULT_STOP_BITS.ToConfigString()},{Configuration.DEFAULT_PARITY.ToConfigString()},{Configuration.DEFAULT_FLOW_CONTROL.ToConfigString()}";

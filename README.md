@@ -38,3 +38,11 @@ For example,
 
 [Release Link]: https://github.com/HisRoyalRedness/ComPortCapture/releases/latest
 [Release img]: https://img.shields.io/github/v/release/HisRoyalRedness/ComPortCapture
+
+## Git
+
+When cloning the repo, make sure you fetch submodules as well
+
+```git
+git clone --recurse-submodules https://github.com/HisRoyalRedness/ComPortCapture
+```
