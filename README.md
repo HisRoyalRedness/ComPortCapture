@@ -8,7 +8,7 @@ It also supports output as hex
 ## Usage
 
 ```txt
-ComPortCapture, version: 1.0.58
+ComPortCapture, version: 1.0.63
 
    Usage: ComPortCapture [com=]<comPort> [baud=<baudRate>] [config=<db,sb,pa,fl>] [noempty]
                          [logpath=<logFilePath>] [logsize=<maxLogSize>] [binfile=<binLogPath>]
@@ -31,6 +31,12 @@ ComPortCapture, version: 1.0.58
          wrap:        Wrap the line if it's longer than the console window.
          save:        Save the configuration as <name>.
          load:        Load the configuration from <name>.
+
+
+To run as a service, use this command:
+Note that logging must be enabled in the config file (logpath or binfile)
+
+       sc create "<service name>" binpath="<path to ComPortCapture.exe> <path to config file>"
 ```
 
 For example,
@@ -61,4 +67,4 @@ ComPortCapture can run as a service. Follow these steps to get it set up:
 
  ```sc create "<service name>" binpath="<path to ComPortCapture.exe> <Path to config file>"```
 
-  - The service can then be started and stopped an s normal
+  - The service can then be started and stopped as normal
