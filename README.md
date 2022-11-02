@@ -56,7 +56,8 @@ git clone --recurse-submodules https://github.com/HisRoyalRedness/ComPortCapture
 ComPortCapture can run as a service. Follow these steps to get it set up:
 
  - Create a configuration file (using the ```save``` option)
- - Create a Windows service using the ```sc``` utility. The command line is:
+ - Create a Windows service using the ```sc``` utility. You need to running with admin
+   privileges to do this. The command line is:
 
  ```sc create "<service name>" binpath="<path to ComPortCapture.exe> <Path to config file>"```
 

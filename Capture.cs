@@ -369,7 +369,7 @@ namespace HisRoyalRedness.com
             logger.LogInfo(
                 $"{fileName}, version: {version}{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
-                $"   Usage: {fileName, -14} [{CMD_COMPORT}=]<comPort> [{CMD_BAUD}=<baudRate>] [{CMD_CONFIG}=<db,sb,pa,fl>] [{CMD_NOEMPTY}]{Environment.NewLine}" +
+                $"   Usage: {fileName,-14} [{CMD_COMPORT}=]<comPort> [{CMD_BAUD}=<baudRate>] [{CMD_CONFIG}=<db,sb,pa,fl>] [{CMD_NOEMPTY}]{Environment.NewLine}" +
                 $"                         [{CMD_LOGPATH}=<logFilePath>] [{CMD_LOGSIZE}=<maxLogSize>] [{CMD_BINFILE}=<binLogPath>]{Environment.NewLine}" +
                 $"                         [{CMD_HEXMODE}[=<hexCols>]] [{CMD_KEYENTRY}] [{CMD_WRAP}] [{CMD_ENUM_PORTS}] [{CMD_SAVE}=<name>] [{CMD_LOAD}=<name>]{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
@@ -390,8 +390,14 @@ namespace HisRoyalRedness.com
                 $"         {CMD_WRAP + ":",alignment}Wrap the line if it's longer than the console window.{Environment.NewLine}" +
                 $"         {CMD_SAVE + ":",alignment}Save the configuration as <name>.{Environment.NewLine}" +
                 $"         {CMD_LOAD + ":",alignment}Load the configuration from <name>.{Environment.NewLine}" +
+                $"{Environment.NewLine}" +
+                $"{Environment.NewLine}" +
+                $"To run as a service, using this command:{Environment.NewLine}" +
+                $"{Environment.NewLine}" +
+                $"       sc create \"<service name>\" binpath=\"<path to ComPortCapture.exe> <path to config file>\"{Environment.NewLine}" +
                 $"{Environment.NewLine}"
-            );
+
+            ); ;
         }
 
         static bool IsComPort(string inp) => _comPortRegex.Match(inp).Success;
