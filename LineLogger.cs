@@ -28,7 +28,7 @@ namespace HisRoyalRedness.com
         public void RollLog()
         {
             _logWriter?.RollLogFile();
-            Console.WriteLine($"{Environment.NewLine}Log file rolled over by user");
+            _config.MsgLogger.LogInfo($"{Environment.NewLine}Log file rolled over by user");
         }
 
         public string Header

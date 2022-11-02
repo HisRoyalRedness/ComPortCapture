@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
+using System.Xml.Linq;
 
 namespace HisRoyalRedness.com
 {
@@ -61,16 +62,16 @@ namespace HisRoyalRedness.com
         public Encoding InputEncoding { get; set; } = null;
 
         public LineLogger Logger { get; set; }
+        public IMessageLogger MsgLogger { get; set; }
     }
 
     #region ConfigExtensions
     internal static class ConfigExtensions
     {
-        public static bool Save(this Configuration config, string name)
+        public static bool Save(this Configuration config, string filePath)
         {
             var sb = new StringBuilder();
             sb.AppendLine($"Ver=1");
-            sb.AppendLine($"Name={name}");
             sb.AppendLine($"COMPort={config.COMPort}");
             sb.AppendLine($"BaudRate={config.BaudRate}");
             sb.AppendLine($"DataBits={config.DataBits}");
@@ -88,67 +89,58 @@ namespace HisRoyalRedness.com
             sb.AppendLine($"EnumeratePorts={(config.EnumeratePorts ? 1 : 0)}");
             sb.AppendLine($"HexColumns={config.HexColumns}");
 
-            var storeName = GetStoreName(name);
             try
             {
-                var isoStore = IsolatedStorageFile.GetStore(IsolatedStorageScope.User | IsolatedStorageScope.Assembly, null, null);
-                using (var isoStream = new IsolatedStorageFileStream(storeName, FileMode.Create, isoStore))
-                {
-                    using StreamWriter writer = new StreamWriter(isoStream);
-                    writer.Write(sb.ToString());
-                }
+                File.WriteAllText(Path.GetFullPath(filePath), sb.ToString());
             }
             catch (Exception)
             {
-                Console.WriteLine($"ERROR: Can't write the save file {storeName}");
+                config.MsgLogger.LogError($"Can't save configuration to '{filePath}'");
                 return false;
             }
             return true;
         }
 
-        public static bool Load(this Configuration config, string name)
+        public static bool Load(this Configuration config, string filePath)
         {
-            var storeName = GetStoreName(name);
+
             int ver = 0;
 
             try
             {
-                var isoStore = IsolatedStorageFile.GetStore(IsolatedStorageScope.User | IsolatedStorageScope.Assembly, null, null);
-                if (!isoStore.FileExists(storeName))
+                var fullPath = Path.GetFullPath(filePath);
+                if (!File.Exists(fullPath))
                 {
-                    Console.WriteLine($"ERROR: Can't find the load file {name}");
+                    config.MsgLogger.LogError($"Can't load configuration from '{filePath}'");
                     return false;
                 }
-                using (IsolatedStorageFileStream isoStream = new IsolatedStorageFileStream(storeName, FileMode.Open, isoStore))
+
+                foreach(var line in File.ReadAllLines(fullPath).Where(l => !string.IsNullOrWhiteSpace(l)))
                 {
-                    using (StreamReader reader = new StreamReader(isoStream))
+                    // First line must be Ver
+                    if (ver == 0)
                     {
-                        while(true)
-                        {
-                            var line = reader.ReadLine();
-                            if (line == null)
-                                break;
-                            if (!string.IsNullOrWhiteSpace(line))
-                            {
-                                // First line must be Ver
-                                if (ver == 0)
-                                {
-                                    if (!line.FindValueInt("Ver", out ver) || ver < 1)
-                                        return ReturnError("Invalid or missing load file version");
-                                }
-                                else
-                                    ParseConfig(config, line, ver);
-                            }
-                        }
+                        if (!line.FindValueInt("Ver", out ver) || ver < 1)
+                            return ReturnError(config.MsgLogger, "Invalid or missing load file version");
                     }
+                    else
+                        ParseConfig(config, line, ver);
                 }
             }
             catch (Exception)
             {
-                Console.WriteLine($"ERROR: Can't read the load file from {storeName}");
+                config.MsgLogger.LogError($"Can't load configuration from '{filePath}'");
                 return false;
             }
             return true;
+        }
+
+        static IsolatedStorageFile GetStore(bool isUser)
+        {
+            IsolatedStorageScope scope = isUser
+                ? IsolatedStorageScope.User
+                : IsolatedStorageScope.Machine;
+            return IsolatedStorageFile.GetStore(scope, null, null);
         }
 
         static void ParseConfig(this Configuration config, string line, int ver)
@@ -171,15 +163,9 @@ namespace HisRoyalRedness.com
             else if (line.FindValueInt("HexColumns", out int hexcols)) config.HexColumns = hexcols;
         }
 
-        static string GetStoreName(string name)
+        static bool ReturnError(IMessageLogger logger, string msg)
         {
-            var invalidChars = Path.GetInvalidFileNameChars();
-            return $"ComPortCapture_{(string.Join("", name.Select(c => (invalidChars.Contains(c) || c == ' ') ? '_' : c)))}.cpc";
-        }
-
-        static bool ReturnError(string msg)
-        {
-            Console.WriteLine($"ERROR: {msg}");
+            logger.LogError(msg);
             return false;
         }
 

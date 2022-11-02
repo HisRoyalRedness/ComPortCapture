@@ -50,3 +50,14 @@ When cloning the repo, make sure you fetch submodules as well
 ```git
 git clone --recurse-submodules https://github.com/HisRoyalRedness/ComPortCapture
 ```
+
+## Installing as a service
+
+ComPortCapture can run as a service. Follow these steps to get it set up:
+
+ - Create a configuration file (using the ```save``` option)
+ - Create a Windows service using the ```sc``` utility. The command line is:
+
+ ```sc create "<service name>" binpath="<path to ComPortCapture.exe> <Path to config file>"```
+
+  - The service can then be started and stopped an s normal

@@ -43,7 +43,7 @@ namespace HisRoyalRedness.com
                 }
                 catch(Exception ex)
                 {
-                    Console.WriteLine($"ERROR: Cannot open {_config.COMPort}. {ex.Message}");
+                    _config.MsgLogger.LogWarning($"Cannot open {_config.COMPort}. {ex.Message}");
                     return false;
                 }
             }
@@ -70,7 +70,7 @@ namespace HisRoyalRedness.com
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"ERROR: Error reading serial port. {ex.Message}");
+                    _config.MsgLogger.LogWarning($"Error reading serial port. {ex.Message}");
                 }
             }
             return 0;
@@ -92,7 +92,7 @@ namespace HisRoyalRedness.com
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"ERROR: Error reading serial port. {ex.Message}");
+                    _config.MsgLogger.LogWarning($"Error reading serial port. {ex.Message}");
                 }
             }
             return 0;

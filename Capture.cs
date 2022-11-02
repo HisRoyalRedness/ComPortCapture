@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Security.Principal;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -19,7 +20,7 @@ namespace HisRoyalRedness.com
 {
     using DataBuffer = ConcurrentCircularBuffer<byte>;
 
-    class Program
+    class Capture
     {
         enum ParseState
         {
@@ -31,17 +32,25 @@ namespace HisRoyalRedness.com
         [STAThread]
         static void Main(string[] args)
         {
-            RunAsConsole(args);
-            //if (Environment.UserInteractive)
-            //    RunAsConsole(args);
-            //else
-            //    RunAsService(args);
+            //System.Diagnostics.Debugger.Launch();
+            if (IsInteractive())
+                RunAsConsole(args);
+            else
+                RunAsService(args);
+        }
+
+        static bool IsInteractive()
+        {
+            // Environment.UserInteractive doesn't seem to work, 
+            // so use this hack to figure out if we're running as a service
+            return Console.OpenStandardInput() != Stream.Null;
         }
 
         static void RunAsConsole(string[] args)
         {
+            IMessageLogger logger = new ConsoleLogger();
             Console.TreatControlCAsInput = true;
-            if (ParseCommandLine(args, out var config))
+            if (ParseCommandLine(args, logger, out var config))
             {
                 string exitMsg = string.Empty;
                 using (config.Logger = new LineLogger(config))
@@ -50,7 +59,7 @@ namespace HisRoyalRedness.com
 
                     if (config.IsLogging)
                         config.Logger.Header = header;
-                    Console.WriteLine(header);
+                    logger.LogInfo(header);
 
                     var dataQueue = new DataBuffer(BUFFER_SIZE * 10);
                     var cancelSource = new CancellationTokenSource();
@@ -60,11 +69,11 @@ namespace HisRoyalRedness.com
                         try
                         {
                             var taskList = new List<Tuple<string, Task>>()
-                        {
-                            new Tuple<string, Task>( "Serial read", SerialReadAsync(config, dataQueue, cancelSource.Token, serial) ),
-                            new Tuple<string, Task>( "Key handling", KeyHandlingAsync(config, cancelSource, serial)),
-                            new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
-                        };
+                            {
+                                new Tuple<string, Task>( "Serial read", SerialReadAsync(config, dataQueue, cancelSource.Token, serial) ),
+                                new Tuple<string, Task>( "Key handling", KeyHandlingAsync(config, cancelSource, serial)),
+                                new Tuple<string, Task>( "Log write", LogWriteAsync(config, dataQueue, cancelSource.Token) )
+                            };
 
                             // Wait for any of the tasks to end
                             var index = Task.WaitAny(taskList.Select(t => t.Item2).ToArray());
@@ -82,44 +91,44 @@ namespace HisRoyalRedness.com
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
+                            logger.LogInfo();
+                            logger.LogInfo();
+                            logger.LogError(ex);
                         }
                     }
                 }
 
                 if (!string.IsNullOrEmpty(exitMsg))
-                    Console.WriteLine(exitMsg);
+                    logger.LogInfo(exitMsg);
             }
             else
                 Environment.ExitCode = 1;
         }
 
-        //static void RunAsService(string[] args)
-        //{
-        //    IHost host = Host.CreateDefaultBuilder(args)
-               
-        //        .UseWindowsService(options =>
-        //        {
-        //            options.ServiceName = "ComPortCapture";
-        //        })
-        //        .ConfigureServices(services =>
-        //        {
-        //            LoggerProviderOptions.RegisterProviderOptions<EventLogSettings, EventLogLoggerProvider>(services);
+        static void RunAsService(string[] args)
+        {
+            IHost host = Host.CreateDefaultBuilder(args)
+                .UseWindowsService(options =>
+                {
+                    options.ServiceName = "ComPortCapture";
+                })
+                .ConfigureServices(services =>
+                {
+                    LoggerProviderOptions.RegisterProviderOptions<EventLogSettings, EventLogLoggerProvider>(services);
+                    services.AddSingleton(new CaptureService(args.Length > 0 ? args[0] : string.Empty));
+                    services.AddHostedService<WindowsBackgroundService>();
+                })
+                .ConfigureLogging((context, logging) =>
+                {
+                    // See: https://github.com/dotnet/runtime/issues/47303
+                    logging.AddConfiguration(context.Configuration.GetSection("Logging"));
+                })
+                .Build();
 
-        //            //services.AddSingleton<PortMonitor>();
-        //            //services.AddHostedService<WindowsBackgroundService>();
-        //        })
-        //        .ConfigureLogging((context, logging) =>
-        //        {
-        //            // See: https://github.com/dotnet/runtime/issues/47303
-        //            logging.AddConfiguration(context.Configuration.GetSection("Logging"));
-        //        })
-        //        .Build();
+            host.Run();
+        }
 
-        //    host.Run();
-        //}
-
-        static string GenerateHeader(Configuration config)
+        public static string GenerateHeader(Configuration config)
         {
             var header =
                 $"COM port:       {config.COMPort}{Environment.NewLine}" +
@@ -146,9 +155,12 @@ namespace HisRoyalRedness.com
         }
 
         #region Command line parsing
-        static bool ParseCommandLine(string[] args, out Configuration config)
+        static bool ParseCommandLine(string[] args, IMessageLogger logger, out Configuration config)
         {
-            config = new Configuration();
+            config = new Configuration()
+            {
+                MsgLogger = logger
+            };
             foreach (var arg in args)
             {
                 var split = arg.Split('=');
@@ -198,7 +210,7 @@ namespace HisRoyalRedness.com
                         // Anything else
                         else
                         {
-                            Console.WriteLine($"ERROR: Unknown argument '{arg}'.");
+                            logger.LogError($"Unknown argument '{arg}'.");
                             return false;
                         }
                         break;
@@ -211,7 +223,7 @@ namespace HisRoyalRedness.com
                                     config.COMPort = split[1].ToUpper();
                                 else
                                 {
-                                    Console.WriteLine($"ERROR: Invalid COM port argument '{split[1]}'.");
+                                    logger.LogError($"Invalid COM port argument '{split[1]}'.");
                                     return false;
                                 }
                                 break;
@@ -221,7 +233,7 @@ namespace HisRoyalRedness.com
                                     config.BaudRate = baud;
                                 else
                                 {
-                                    Console.WriteLine($"ERROR: Invalid baud rate argument '{split[1]}'.");
+                                    logger.LogError($"Invalid baud rate argument '{split[1]}'.");
                                     return false;
                                 }
                                 break;
@@ -239,7 +251,7 @@ namespace HisRoyalRedness.com
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"ERROR: Invalid config argument '{split[1]}'.");
+                                    logger.LogError($"Invalid config argument '{split[1]}'.");
                                     return false;
                                 }
                                 break;
@@ -254,7 +266,7 @@ namespace HisRoyalRedness.com
                                     }
                                     catch(Exception ex)
                                     {
-                                        Console.WriteLine(ex.Message);
+                                        logger.LogError(ex);
                                         return false;
                                     }
                                 }
@@ -266,7 +278,7 @@ namespace HisRoyalRedness.com
                                     config.LogFileSize = size;
                                 else
                                 {
-                                    Console.WriteLine($"ERROR: Invalid file size '{split[1]}'.");
+                                    logger.LogError($"Invalid file size '{split[1]}'.");
                                     return false;
                                 }
                                 break;
@@ -280,7 +292,7 @@ namespace HisRoyalRedness.com
                                 }
                                 catch (Exception ex)
                                 {
-                                    Console.WriteLine(ex.Message);
+                                    logger.LogError(ex);
                                     return false;
                                 }
                                 break;
@@ -293,7 +305,7 @@ namespace HisRoyalRedness.com
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"ERROR: HexCols number '{split[1]}'. It must be between 8 and 64.");
+                                    logger.LogError($"HexCols number '{split[1]}'. It must be between 8 and 64.");
                                     return false;
                                 }
                                 break;
@@ -304,27 +316,25 @@ namespace HisRoyalRedness.com
 
                             case CMD_LOAD:
                                 config.LoadName = split[1];
+                                if (!config.Load(config.LoadName))
+                                    return false;
                                 break;
 
                             default:
-                                Console.WriteLine($"ERROR: Unknown argument '{split[0]}'.");
+                                logger.LogError($"Unknown argument '{split[0]}'.");
                                 return false;
                         }
                         break;
 
                     default:
 
-                        Console.WriteLine($"ERROR: Unknown argument '{arg}'.");
+                        logger.LogError($"Unknown argument '{arg}'.");
                         return false;
                 }
             } //foreach
 
             if (!string.IsNullOrWhiteSpace(config.SaveName) &&
                 !config.Save(config.SaveName))
-                return false;
-
-            if (!string.IsNullOrWhiteSpace(config.LoadName) &&
-                !config.Load(config.LoadName))
                 return false;
 
             if (config.EnumeratePorts)
@@ -337,26 +347,26 @@ namespace HisRoyalRedness.com
                     ? portInt
                     : -1);
     
-                Console.WriteLine($"Available ports: {string.Join(", ", ports)}{Environment.NewLine}");
+                logger.LogInfo($"Available ports: {string.Join(", ", ports)}{Environment.NewLine}");
             }
 
             if (string.IsNullOrEmpty(config.COMPort))
             {
-                PrintUsage();
+                PrintUsage(logger);
                 return false;
             }
 
             return true;
         }
 
-        static void PrintUsage()
+        static void PrintUsage(IMessageLogger logger)
         {
             var filePath = Process.GetCurrentProcess().MainModule.FileName;
             var version = FileVersionInfo.GetVersionInfo(filePath).FileVersion;
             var fileName = Path.GetFileNameWithoutExtension(filePath);
 
             const int alignment = -13;
-            Console.WriteLine(
+            logger.LogInfo(
                 $"{fileName}, version: {version}{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
                 $"   Usage: {fileName, -14} [{CMD_COMPORT}=]<comPort> [{CMD_BAUD}=<baudRate>] [{CMD_CONFIG}=<db,sb,pa,fl>] [{CMD_NOEMPTY}]{Environment.NewLine}" +
@@ -455,7 +465,7 @@ namespace HisRoyalRedness.com
         #endregion Key handling
 
         #region Serial read
-        static Task SerialReadAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken, SerialWrapper serial)
+        public static Task SerialReadAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken, SerialWrapper serial)
         {
             return Task.Run(async () =>
             {
@@ -479,7 +489,8 @@ namespace HisRoyalRedness.com
                                 if (cancelToken.IsCancellationRequested)
                                     break;
 
-                                Console.WriteLine($"{Environment.NewLine}WARNING: Cannot read from port {config.COMPort}. Retrying...");
+                                config.MsgLogger.LogInfo();
+                                config.MsgLogger.LogWarning($"{Environment.NewLine}Cannot read from port {config.COMPort}. Retrying...");
                                 serial.Close();
                                 await Task.Delay(5000, cancelToken);
 
@@ -497,14 +508,16 @@ namespace HisRoyalRedness.com
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
+                    config.MsgLogger.LogInfo();
+                    config.MsgLogger.LogInfo();
+                    config.MsgLogger.LogError(ex);
                 }
             });
         }
         #endregion Serial read
 
         #region Log write
-        static Task LogWriteAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken)
+        public static Task LogWriteAsync(Configuration config, DataBuffer dataQueue, CancellationToken cancelToken)
         {
             return Task.Run(async () =>
             {
@@ -534,7 +547,9 @@ namespace HisRoyalRedness.com
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"{Environment.NewLine}{Environment.NewLine}ERROR: {ex.Message}{Environment.NewLine}{Environment.NewLine}{ex}");
+                    config.MsgLogger.LogInfo();
+                    config.MsgLogger.LogInfo();
+                    config.MsgLogger.LogError(ex);
                 }
             });
         }
