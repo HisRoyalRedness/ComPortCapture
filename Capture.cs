@@ -392,7 +392,8 @@ namespace HisRoyalRedness.com
                 $"         {CMD_LOAD + ":",alignment}Load the configuration from <name>.{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
                 $"{Environment.NewLine}" +
-                $"To run as a service, using this command:{Environment.NewLine}" +
+                $"To run as a service, use this command:{Environment.NewLine}" +
+                $"Note that logging must be enabled in the config file ({CMD_LOGPATH} or {CMD_BINFILE}){Environment.NewLine}" +
                 $"{Environment.NewLine}" +
                 $"       sc create \"<service name>\" binpath=\"<path to ComPortCapture.exe> <path to config file>\"{Environment.NewLine}" +
                 $"{Environment.NewLine}"
